@@ -14,22 +14,22 @@
 //O2のPID項
 #define O2flow_P 400  //O2制御の比例項
 #define O2flow_I 500
-#define O2flow_D 200
+#define O2flow_D 0.4
 
 //空気のPID項
 #define Airflow_P 200  //空気制御の比例項
 #define Airflow_I 300
-#define Airflow_D 100
+#define Airflow_D 0.2
 
 //LPGのPID項
 #define LPGflow_P 400  //LPG制御の比例項
 #define LPGflow_I 500
-#define LPGflow_D 200
+#define LPGflow_D 0.4
 
 //燃焼器内気圧のPID項
 #define Param_P 0.05
 #define Param_I 0.02
-#define Param_D 0.001
+#define Param_D 0.000002
 
 //流量系統PWMのオフセット
 #define OffSet 2000
@@ -160,7 +160,7 @@ void Diaphragm_control(){
   float deviation_P = Press_Target;
   
   deviation_P -= Pressure_IN ;
-  Servo_Input = OffSet_Diaphragm - (Param_P*deviation_P + Param_I*Integral_deviation + Param_D*(deviation_P - last_deviation));
+  Servo_Input = OffSet_Diaphragm - (Param_P*deviation_P + Param_I*Integral_deviation + Param_D*(deviation_P - last_deviation)/(D_COUNT*1e-3);
   
   #ifdef DEBUG_PRESS
   +Serial.print(Pressure_IN);
@@ -186,7 +186,7 @@ void O2_Control(){
   flow_data = analogRead(O2_flow);
   flow_data = flow_data*5/1024;
   flow_data = 0.0192*flow_data*flow_data + 0.0074*flow_data - 0.0217;
-  Control = int16_t(O2flow_P*(O2flow_Target - flow_data)+O2flow_I*integral+O2flow_D*(flow_data - difference)+OffSet);
+  Control = int16_t(O2flow_P*(O2flow_Target - flow_data)+O2flow_I*integral+O2flow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
   integral += O2flow_Target - flow_data;
   if(integral > integral_MAX ) integral=integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
@@ -211,7 +211,7 @@ void Air_Control(){
   flow_data = analogRead(Air_flow);
   flow_data = flow_data*5/1024;
   flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
-  Control = int16_t(Airflow_P*(Airflow_Target - flow_data)+Airflow_I*integral+Airflow_D*(flow_data - difference)+OffSet);
+  Control = int16_t(Airflow_P*(Airflow_Target - flow_data)+Airflow_I*integral+Airflow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
   integral += Airflow_Target - flow_data;
   if(integral > integral_MAX ) integral = integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
@@ -236,7 +236,7 @@ void LPG_Control(){
   flow_data = analogRead(LPG_flow);
   flow_data = flow_data*5/1024;
   flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
-  Control = int16_t(LPGflow_P*(LPGflow_Target - flow_data)+LPGflow_I*integral+LPGflow_D*(flow_data - difference)+OffSet);
+  Control = int16_t(LPGflow_P*(LPGflow_Target - flow_data)+LPGflow_I*integral+LPGflow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
   integral += LPGflow_Target - flow_data;
   if(integral > integral_MAX ) integral=integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
