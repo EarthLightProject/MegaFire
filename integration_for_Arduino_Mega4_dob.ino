@@ -54,7 +54,7 @@
 //////////////通信系定数//////////////
 #define IG_TIME 30 //イグナイタ点火時間
 #define IG_TIME_DELAY 50
-#define POLLING 50 //(ms)タイマ割り込みの周期
+#define POLLING 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 /////////////////////////////////////
 
@@ -71,7 +71,7 @@ void setup()
   Wire.begin();          //I2C通信開始
   setupBME280();
   Servo_Diaphragm.attach(Servo_PWM);
-  MsTimer2::set(POLLING, TIME_Interrupt); // POLLINGごとにオンオフ
+  MsTimer2::set(POLLING, TIME_Interrupt); // POLLINGごとTIME_Interruptを呼び出す
   MsTimer2::start();
   
 }
@@ -113,7 +113,7 @@ void loop()
 
 ///////////////////////サブ関数////////////////////////////
 void TIME_Interrupt(void){
-  static uint8_t Diaphram_count=0;
+  static uint8_t Diaphram_count=0; // TIME_Interrupt()が実行されるごとに0になる?
   wdt_reset();
   timecount++;
   if(timecount>(int)(1000/POLLING)) time_flag=1;
@@ -160,7 +160,7 @@ void Diaphragm_control(){
   float deviation_P = Press_Target;
   
   deviation_P -= Pressure_IN ;
-  Servo_Input = OffSet_Diaphragm - (Param_P*deviation_P + Param_I*Integral_deviation + Param_D*(deviation_P - last_deviation)/(D_COUNT*1e-3);
+  Servo_Input = OffSet_Diaphragm - (Param_P*deviation_P + Param_I*Integral_deviation + Param_D*(deviation_P - last_deviation)/(POLLING*1e-3);
   
   #ifdef DEBUG_PRESS
   +Serial.print(Pressure_IN);
@@ -172,7 +172,7 @@ void Diaphragm_control(){
   else if(Servo_Input<Servo_INPUT_MIN) Servo_Input=Servo_INPUT_MIN;
   Servo_Diaphragm.write(Servo_Input);
   last_deviation = deviation_P;
-  Integral_deviation += deviation_P;
+  Integral_deviation += (POLLING*1e-3)*deviation_P;
   if(Integral_deviation > integ_Diaphragm_MAX) Integral_deviation = integ_Diaphragm_MAX;
   else if(Integral_deviation < integ_Diaphragm_MIN) Integral_deviation = integ_Diaphragm_MIN;
 
@@ -186,8 +186,8 @@ void O2_Control(){
   flow_data = analogRead(O2_flow);
   flow_data = flow_data*5/1024;
   flow_data = 0.0192*flow_data*flow_data + 0.0074*flow_data - 0.0217;
-  Control = int16_t(O2flow_P*(O2flow_Target - flow_data)+O2flow_I*integral+O2flow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
-  integral += O2flow_Target - flow_data;
+  Control = int16_t(O2flow_P*(O2flow_Target - flow_data)+O2flow_I*integral+O2flow_D*(flow_data - difference)/(POLLING*1e-3)+OffSet);
+  integral += (POLLING*1e-3)*(O2flow_Target - flow_data);
   if(integral > integral_MAX ) integral=integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
   difference = flow_data;
@@ -211,8 +211,8 @@ void Air_Control(){
   flow_data = analogRead(Air_flow);
   flow_data = flow_data*5/1024;
   flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
-  Control = int16_t(Airflow_P*(Airflow_Target - flow_data)+Airflow_I*integral+Airflow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
-  integral += Airflow_Target - flow_data;
+  Control = int16_t(Airflow_P*(Airflow_Target - flow_data)+Airflow_I*integral+Airflow_D*(flow_data - difference)/(POLLING*1e-3)+OffSet);
+  integral += (POLLING*1e-3)*(Airflow_Target - flow_data);
   if(integral > integral_MAX ) integral = integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
   difference = flow_data;
@@ -237,7 +237,7 @@ void LPG_Control(){
   flow_data = flow_data*5/1024;
   flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
   Control = int16_t(LPGflow_P*(LPGflow_Target - flow_data)+LPGflow_I*integral+LPGflow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
-  integral += LPGflow_Target - flow_data;
+  integral += (POLLING*1e-3)*(LPGflow_Target - flow_data);
   if(integral > integral_MAX ) integral=integral_MAX;
   else if (integral < integral_MIN) integral = integral_MIN;
   difference = flow_data;
