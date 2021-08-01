@@ -73,7 +73,6 @@ void setup()
   Servo_Diaphragm.attach(Servo_PWM);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとTIME_Interruptを呼び出す
   MsTimer2::start();
-  
 }
 
 void loop()
