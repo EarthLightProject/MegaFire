@@ -6,59 +6,59 @@
 
 //////////制御定数定義/////////////
 //各制御の目標値
-#define O2flow_Target 0.08  //L/min
-#define Airflow_Target 0.7  //L/min
-#define LPGflow_Target 0.08  //L/min
-#define Press_Target  1013.25; //気圧目標値hPa
+#define r_o 0.08  //L/min
+#define r_a 0.7  //L/min
+#define r_g 0.08  //L/min
+#define r_d  1013.25; //気圧目標値hPa
 
 //O2のPID項
-#define O2flow_P 400  //O2制御の比例項
-#define O2flow_I 500
-#define O2flow_D 0.4
+#define Kp_o 400  //O2制御の比例項
+#define Ki_o 500
+#define Kd_o 0.4
 
 //空気のPID項
-#define Airflow_P 200  //空気制御の比例項
-#define Airflow_I 300
-#define Airflow_D 0.2
+#define Kp_a 200  //空気制御の比例項
+#define Ki_a 300
+#define Kd_a 0.2
 
 //LPGのPID項
-#define LPGflow_P 400  //LPG制御の比例項
-#define LPGflow_I 500
-#define LPGflow_D 0.4
+#define Kp_g 400  //LPG制御の比例項
+#define Ki_g 500
+#define Kd_g 0.4
 
 //燃焼器内気圧のPID項
-#define Param_P 0.05
-#define Param_I 0.02
-#define Param_D 0.000002
+#define Kp_d 0.05
+#define Ki_d 0.02
+#define Kd_d 0.000002
 
 //流量系統PWMのオフセット
 #define OffSet 2000
 #define OffSet_Diaphragm (30)
 
 //流量系統の積分偏差の上限下限設定
-#define integral_MAX  5
-#define integral_MIN -5
+#define sum_max  5
+#define sum_min -5
 
 //ダイアフラム制御の積分偏差の上限下限
-#define integ_Diaphragm_MAX 30
-#define integ_Diaphragm_MIN -3000
+#define sum_d_max 30
+#define sum_d_min -3000
 
-#define Servo_INPUT_MAX 105
-#define Servo_INPUT_MIN 37
+#define u_d_max 105
+#define u_d_min 37
 #define Servo_INVERT 127
 
 //ダイアフラム制御周期
-#define D_COUNT 2 //×POLLING(ms)
+#define D_COUNT 2 //×Ts(ms)
 /////////////////////////////////////
 
 //////////////通信系定数//////////////
 #define IG_TIME 30 //イグナイタ点火時間
 #define IG_TIME_DELAY 50
-#define POLLING 50 //(ms)タイマ割り込みの周期, 制御周期
+#define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 /////////////////////////////////////
 
-float Servo_Input=0;
+float u_d=0;
 
 void setup()
 {
@@ -71,7 +71,7 @@ void setup()
   Wire.begin();          //I2C通信開始
   setupBME280();
   Servo_Diaphragm.attach(Servo_PWM);
-  MsTimer2::set(POLLING, TIME_Interrupt); // POLLINGごとTIME_Interruptを呼び出す
+  MsTimer2::set(Ts, TIME_Interrupt); // TsごとTIME_Interruptを呼び出す
   MsTimer2::start();
   
 }
@@ -94,7 +94,7 @@ void loop()
       myFile.write(',');
       myFile.print(Buffer_TIME);
       time_flag=0;
-      if(timecount > (int)(SENDTIME*1000/POLLING)){
+      if(timecount > (int)(SENDTIME*1000/Ts)){
         Serial_print();
         RECEVE_Str.remove(0);
         /*if((digitalRead(IGsig)==1) && (IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
@@ -113,14 +113,14 @@ void loop()
 
 ///////////////////////サブ関数////////////////////////////
 void TIME_Interrupt(void){
-  static uint8_t Diaphram_count=0; // TIME_Interrupt()が実行されるごとに0になる?
+  static uint8_t Diaphram_count=0;
   wdt_reset();
   timecount++;
-  if(timecount>(int)(1000/POLLING)) time_flag=1;
+  if(timecount>(int)(1000/Ts)) time_flag=1;
   
   /*if(Diaphram_count>D_COUNT){
     sei();
-    Pressure_IN = BME280_IN.readFloatPressure() / 100; //hPa
+    x_d = BME280_IN.readFloatPressure() / 100; //hPa
     //cli();
     Diaphragm_control();
     Diaphram_count=0;
@@ -156,98 +156,102 @@ void Serial_print(void){
 
 //////////////////////PID制御関数///////////////////////////
 void Diaphragm_control(){
-  static float last_deviation=0 , Integral_deviation=0;
-  float deviation_P = Press_Target;
-  
-  deviation_P -= Pressure_IN ;
-  Servo_Input = OffSet_Diaphragm - (Param_P*deviation_P + Param_I*Integral_deviation + Param_D*(deviation_P - last_deviation)/(POLLING*1e-3);
+  static float e_d_tmp = 0 , sum_d = 0;
+  float x_d = Pressure_IN;
+  float e_d = r_d - x_d;
+  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3);
   
   #ifdef DEBUG_PRESS
-  +Serial.print(Pressure_IN);
+  +Serial.print(x_d);
   Serial.write(',');
-  Serial.println(Servo_Input);
+  Serial.println(u_d);
   #endif
   
-  if(Servo_Input > Servo_INPUT_MAX) Servo_Input=Servo_INPUT_MAX;
-  else if(Servo_Input<Servo_INPUT_MIN) Servo_Input=Servo_INPUT_MIN;
-  Servo_Diaphragm.write(Servo_Input);
-  last_deviation = deviation_P;
-  Integral_deviation += (POLLING*1e-3)*deviation_P;
-  if(Integral_deviation > integ_Diaphragm_MAX) Integral_deviation = integ_Diaphragm_MAX;
-  else if(Integral_deviation < integ_Diaphragm_MIN) Integral_deviation = integ_Diaphragm_MIN;
-
+  if(u_d > u_d_max) u_d = u_d_max;
+  else if(u_d < u_d_min) u_d = u_d_min;
+  Servo_Diaphragm.write(u_d);
+  e_d_tmp = e_d;
+  sum_d += (Ts * 1e-3) * e_d;
+  if(sum_d > sum_d_max) sum_d = sum_d_max;
+  else if(sum_d < sum_d_min) sum_d = sum_d_min;
 }
 
 void O2_Control(){
-  double flow_data = 0;
-  int16_t Control = 0;
-  static double integral = 0;
-  static double difference=0;
-  flow_data = analogRead(O2_flow);
-  flow_data = flow_data*5/1024;
-  flow_data = 0.0192*flow_data*flow_data + 0.0074*flow_data - 0.0217;
-  Control = int16_t(O2flow_P*(O2flow_Target - flow_data)+O2flow_I*integral+O2flow_D*(flow_data - difference)/(POLLING*1e-3)+OffSet);
-  integral += (POLLING*1e-3)*(O2flow_Target - flow_data);
-  if(integral > integral_MAX ) integral=integral_MAX;
-  else if (integral < integral_MIN) integral = integral_MIN;
-  difference = flow_data;
-  if(Control > 4095) Control = 4095;
-  else if(Control < 0) Control = 0;
-  O2PWMset = Control;//O2 PWM
+  double x = 0; //現在の流量
+  int16_t u = 0; //制御入力
+  static double sum = 0; //誤差の総和
+  static double e_o_tmp = 0;　//1ステップ前の誤差, temporary error of O2 control
+  /* 流量を線形化 */
+  x = analogRead(O2_flow);
+  x = x * 5 / 1024;
+  x = 0.0192 * x * x + 0.0074 * x - 0.0217;
+  /* 制御計算 */
+  double e = x - r_o; //誤差
+  u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet);　//制御入力を計算
+  e_o_tmp = e; //1ステップ前の誤差を更新
+  sum += (Ts * 1e-3) * e; //誤差の総和を更新
+  /* 上下限設定 */
+  if(sum > sum_max) sum = sum_max;
+  else if (sum < sum_min) sum = sum_min;
+  if(u > 4095) u = 4095;
+  else if(u < 0) u = 0;
+  O2PWMset = u; //O2 PWM
   #ifdef DEBUG_FLOW
   Serial.print("O2=");
-  Serial.print( flow_data);
+  Serial.print(x);
   Serial.write(',');
-  Serial.print(Control);
+  Serial.print(u);
   Serial.write(',');
   #endif
 }
 
 void Air_Control(){
-  double flow_data = 0;
-  int16_t Control = 0;
-  static double integral = 0;
-  static double difference=0;
-  flow_data = analogRead(Air_flow);
-  flow_data = flow_data*5/1024;
-  flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
-  Control = int16_t(Airflow_P*(Airflow_Target - flow_data)+Airflow_I*integral+Airflow_D*(flow_data - difference)/(POLLING*1e-3)+OffSet);
-  integral += (POLLING*1e-3)*(Airflow_Target - flow_data);
-  if(integral > integral_MAX ) integral = integral_MAX;
-  else if (integral < integral_MIN) integral = integral_MIN;
-  difference = flow_data;
-  if(Control > 4095) Control = 4095;
-  else if(Control < 0) Control = 0;
-  AirPWMset = Control;//Air PWM
+  double x = 0;
+  int16_t u = 0;
+  static double sum = 0;
+  static double e_a_tmp = 0;
+  x = analogRead(Air_flow);
+  x = x * 5 / 1024;
+  x =0.0528 * x * x -0.0729 * x + 0.0283;
+  double e = r_a - x;
+  u = int16_t(Kp_a * e + Ki_a * sum + Kd_a * (e - e_a_tmp) / (Ts * 1e-3) + OffSet);
+  e_a_tmp = e;
+  sum += (Ts * 1e-3) * e;
+  if(sum > sum_max) sum = sum_max;
+  else if (sum < sum_min) sum = sum_min;
+  if(u > 4095) u = 4095;
+  else if(u < 0) u = 0;
+  AirPWMset = u;//Air PWM
   #ifdef DEBUG_FLOW
   Serial.print("Air=");
-  Serial.print( flow_data);
+  Serial.print(x);
   Serial.write(',');
-  Serial.print(Control);
+  Serial.print(u);
   Serial.write(',');
   #endif
 }
 
 void LPG_Control(){
-  double flow_data = 0;
-  int16_t Control = 0;
-  static double integral = 0;
-  static double difference=0;
-  flow_data = analogRead(LPG_flow);
-  flow_data = flow_data*5/1024;
-  flow_data =0.0528*flow_data*flow_data -0.0729*flow_data+ 0.0283;
-  Control = int16_t(LPGflow_P*(LPGflow_Target - flow_data)+LPGflow_I*integral+LPGflow_D*(flow_data - difference)/(D_COUNT*1e-3)+OffSet);
-  integral += (POLLING*1e-3)*(LPGflow_Target - flow_data);
-  if(integral > integral_MAX ) integral=integral_MAX;
-  else if (integral < integral_MIN) integral = integral_MIN;
-  difference = flow_data;
-  if(Control > 4095) Control = 4095;
-  else if(Control < 0) Control = 0;
-  LPGPWMset = Control;//LPG PWM
+  double x = 0;
+  int16_t u = 0;
+  static double sum = 0;
+  static double e_g_tmp = 0;
+  x = analogRead(LPG_flow);
+  x = x * 5 / 1024;
+  x =0.0528 * x * x -0.0729 * x+ 0.0283;
+  double e = r_g - x;
+  u = int16_t(Kp_g * e + Ki_g * sum + Kd_g * (e - e_g_tmp) / (Ts * 1e-3) + OffSet);
+  e_g_tmp = e;
+  sum += (Ts * 1e-3) * e;
+  if(sum > sum_max) sum=sum_max;
+  else if (sum < sum_min) sum = sum_min;
+  if(u > 4095) u = 4095;
+  else if(u < 0) u = 0;
+  LPGPWMset = u;//LPG PWM
   #ifdef DEBUG_FLOW
   Serial.print("LPG=");
-  Serial.print( flow_data);
+  Serial.print(x);
   Serial.write(',');
-  Serial.println(Control);
+  Serial.println(u);
   #endif
 }
