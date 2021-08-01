@@ -12,24 +12,24 @@
 #define r_d  1013.25; //気圧目標値hPa
 
 //O2のPID項
-#define Kp_o 400  //O2制御の比例項
-#define Ki_o 500
-#define Kd_o 0.4
+#define Kp_o 0.01  //O2制御の比例項
+#define Ki_o 0
+#define Kd_o 0
 
 //空気のPID項
-#define Kp_a 200  //空気制御の比例項
-#define Ki_a 300
-#define Kd_a 0.2
+#define Kp_a 0.01  //空気制御の比例項
+#define Ki_a 0
+#define Kd_a 0
 
 //LPGのPID項
-#define Kp_g 400  //LPG制御の比例項
-#define Ki_g 500
-#define Kd_g 0.4
+#define Kp_g 0.01  //LPG制御の比例項
+#define Ki_g 0
+#define Kd_g 0
 
 //燃焼器内気圧のPID項
-#define Kp_d 0.05
-#define Ki_d 0.02
-#define Kd_d 0.000002
+#define Kp_d 0.01
+#define Ki_d 0
+#define Kd_d 0
 
 //流量系統PWMのオフセット
 #define OffSet 2000
@@ -58,7 +58,7 @@
 #define SENDTIME 4  //送信間隔(s)
 /////////////////////////////////////
 
-float u_d=0;
+float u_d = 0;
 
 void setup()
 {
@@ -212,7 +212,7 @@ void Air_Control(){
   static double e_a_tmp = 0;
   x = analogRead(Air_flow);
   x = x * 5 / 1024;
-  x =0.0528 * x * x -0.0729 * x + 0.0283;
+  x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   u = int16_t(Kp_a * e + Ki_a * sum + Kd_a * (e - e_a_tmp) / (Ts * 1e-3) + OffSet);
   e_a_tmp = e;
@@ -238,7 +238,7 @@ void LPG_Control(){
   static double e_g_tmp = 0;
   x = analogRead(LPG_flow);
   x = x * 5 / 1024;
-  x =0.0528 * x * x -0.0729 * x+ 0.0283;
+  x = 0.0528 * x * x -0.0729 * x+ 0.0283;
   double e = r_g - x;
   u = int16_t(Kp_g * e + Ki_g * sum + Kd_g * (e - e_g_tmp) / (Ts * 1e-3) + OffSet);
   e_g_tmp = e;
