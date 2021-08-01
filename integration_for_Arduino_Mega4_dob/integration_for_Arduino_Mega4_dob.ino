@@ -159,7 +159,7 @@ void Diaphragm_control(){
   static float e_d_tmp = 0 , sum_d = 0;
   float x_d = Pressure_IN;
   float e_d = r_d - x_d;
-  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3);
+  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3));
   
   #ifdef DEBUG_PRESS
   +Serial.print(x_d);
@@ -180,14 +180,14 @@ void O2_Control(){
   double x = 0; //現在の流量
   int16_t u = 0; //制御入力
   static double sum = 0; //誤差の総和
-  static double e_o_tmp = 0;　//1ステップ前の誤差, temporary error of O2 control
+  static double e_o_tmp = 0; //1ステップ前の誤差, temporary error of O2 control
   /* 流量を線形化 */
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
   x = 0.0192 * x * x + 0.0074 * x - 0.0217;
   /* 制御計算 */
   double e = x - r_o; //誤差
-  u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet);　//制御入力を計算
+  u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet); //制御入力を計算
   e_o_tmp = e; //1ステップ前の誤差を更新
   sum += (Ts * 1e-3) * e; //誤差の総和を更新
   /* 上下限設定 */
