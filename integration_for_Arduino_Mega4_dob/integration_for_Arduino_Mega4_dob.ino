@@ -156,35 +156,36 @@ void Serial_print(void){
 
 //////////////////////PID制御関数///////////////////////////
 void Diaphragm_control(){
-  static float e_d_tmp = 0 , sum_d = 0;
+  /* 変数設定 */
+  static float e_d_tmp = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
   float x_d = Pressure_IN;
   float e_d = r_d - x_d;
+  /* 制御計算 */
   u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3));
-  
+  e_d_tmp = e_d;
+  sum_d += (Ts * 1e-3) * e_d;
+  /* 上下限設定 */
+  if(sum_d > sum_d_max) sum_d = sum_d_max;
+  else if(sum_d < sum_d_min) sum_d = sum_d_min;
+  if(u_d > u_d_max) u_d = u_d_max;
+  else if(u_d < u_d_min) u_d = u_d_min;
+  /* 入力 */
+  Servo_Diaphragm.write(u_d);
   #ifdef DEBUG_PRESS
   +Serial.print(x_d);
   Serial.write(',');
   Serial.println(u_d);
   #endif
-  
-  if(u_d > u_d_max) u_d = u_d_max;
-  else if(u_d < u_d_min) u_d = u_d_min;
-  Servo_Diaphragm.write(u_d);
-  e_d_tmp = e_d;
-  sum_d += (Ts * 1e-3) * e_d;
-  if(sum_d > sum_d_max) sum_d = sum_d_max;
-  else if(sum_d < sum_d_min) sum_d = sum_d_min;
 }
 
 void O2_Control(){
+  /* 変数設定 */
+  static double e_o_tmp = 0, sum = 0;
   double x = 0; //現在の流量
   int16_t u = 0; //制御入力
-  static double sum = 0; //誤差の総和
-  static double e_o_tmp = 0; //1ステップ前の誤差, temporary error of O2 control
-  /* 流量を線形化 */
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
-  x = 0.0192 * x * x + 0.0074 * x - 0.0217;
+  x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
   /* 制御計算 */
   double e = x - r_o; //誤差
   u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet); //制御入力を計算
@@ -195,6 +196,7 @@ void O2_Control(){
   else if (sum < sum_min) sum = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
+  /* 入力 */
   O2PWMset = u; //O2 PWM
   #ifdef DEBUG_FLOW
   Serial.print("O2=");
@@ -206,6 +208,7 @@ void O2_Control(){
 }
 
 void Air_Control(){
+  /* 変数設定 */
   double x = 0;
   int16_t u = 0;
   static double sum = 0;
@@ -214,13 +217,16 @@ void Air_Control(){
   x = x * 5 / 1024;
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
+  /* 制御計算 */
   u = int16_t(Kp_a * e + Ki_a * sum + Kd_a * (e - e_a_tmp) / (Ts * 1e-3) + OffSet);
   e_a_tmp = e;
   sum += (Ts * 1e-3) * e;
+  /* 上下限設定 */
   if(sum > sum_max) sum = sum_max;
   else if (sum < sum_min) sum = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
+  /* 入力 */
   AirPWMset = u;//Air PWM
   #ifdef DEBUG_FLOW
   Serial.print("Air=");
@@ -232,6 +238,7 @@ void Air_Control(){
 }
 
 void LPG_Control(){
+  /* 変数設定 */
   double x = 0;
   int16_t u = 0;
   static double sum = 0;
@@ -240,13 +247,16 @@ void LPG_Control(){
   x = x * 5 / 1024;
   x = 0.0528 * x * x -0.0729 * x+ 0.0283;
   double e = r_g - x;
+  /* 制御計算 */
   u = int16_t(Kp_g * e + Ki_g * sum + Kd_g * (e - e_g_tmp) / (Ts * 1e-3) + OffSet);
   e_g_tmp = e;
   sum += (Ts * 1e-3) * e;
+  /* 上下限設定 */
   if(sum > sum_max) sum=sum_max;
   else if (sum < sum_min) sum = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
+  /* 入力 */
   LPGPWMset = u;//LPG PWM
   #ifdef DEBUG_FLOW
   Serial.print("LPG=");
