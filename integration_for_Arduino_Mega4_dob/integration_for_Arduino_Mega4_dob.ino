@@ -2,7 +2,7 @@
 //#define DEBUG_FLOW  //流量系統のデバッグ
 //#define DEBUG_SENS  //センサ系のデバッグ用
 
-#include "integration_for_Arduino_Mega4.h"  //ライブラリとピン定義
+#include "integration_for_Arduino_Mega4_dob.h"  //ライブラリとピン定義
 
 //////////制御定数定義/////////////
 //各制御の目標値
