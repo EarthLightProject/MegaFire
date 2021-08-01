@@ -9,7 +9,7 @@
 #define r_o 0.08  //L/min
 #define r_a 0.7  //L/min
 #define r_g 0.08  //L/min
-#define r_d  1013.25; //気圧目標値hPa
+#define r_d 1013.25; //気圧目標値hPa
 
 //O2のPID項
 #define Kp_o 0.01  //O2制御の比例項
@@ -157,12 +157,12 @@ void Serial_print(void){
 void Diaphragm_control(){
   /* 変数設定 */
   static float e_d_tmp = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
-  float x_d = Pressure_IN;
-  float e_d = r_d - x_d;
+  float x_d = Pressure_IN; //現在の圧力
+  float e_d = r_d - x_d; //誤差
   /* 制御計算 */
-  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3));
-  e_d_tmp = e_d;
-  sum_d += (Ts * 1e-3) * e_d;
+  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3)); //制御入力を計算
+  e_d_tmp = e_d; //誤差を更新
+  sum_d += (Ts * 1e-3) * e_d; //誤差の総和を更新
   /* 上下限設定 */
   if(sum_d > sum_d_max) sum_d = sum_d_max;
   else if(sum_d < sum_d_min) sum_d = sum_d_min;
@@ -179,14 +179,14 @@ void Diaphragm_control(){
 
 void O2_Control(){
   /* 変数設定 */
-  static double e_o_tmp = 0, sum = 0;
+  static double e_o_tmp = 0, sum = 0; //1ステップ前の誤差, 誤差の総和
   double x = 0; //現在の流量
   int16_t u = 0; //制御入力
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
   x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
   /* 制御計算 */
-  double e = x - r_o; //誤差
+  double e = r_o - x; //誤差
   u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet); //制御入力を計算
   e_o_tmp = e; //1ステップ前の誤差を更新
   sum += (Ts * 1e-3) * e; //誤差の総和を更新
