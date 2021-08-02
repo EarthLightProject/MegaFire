@@ -186,8 +186,8 @@ void O2_Control(){
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
   x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
-  /* 制御計算 */
   double e = r_o - x; //誤差
+  /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet); //制御入力を計算
   etmp_o = e; //1ステップ前の誤差を更新
   sum_o += (Ts * 1e-3) * e; //誤差の総和を更新

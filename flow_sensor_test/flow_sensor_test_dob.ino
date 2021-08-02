@@ -21,19 +21,19 @@ const float r_a = 0.7;   //L/min
 const float r_g = 0.08;  //L/min
 
 //O2のPIDゲイン
-const float Kp_o = 0.01;
-const float Ki_o = 0;
-const float Kd_o = 0;
+const float Kp_o = 0.01;  //未設定
+const float Ki_o = 0;     //未設定
+const float Kd_o = 0;     //未設定
 
 //空気のPIDゲイン
-const float Kp_a = 0.01;
-const float Ki_a = 0;
-const float Kd_a = 0;
+const float Kp_a = 0.01;  //未設定
+const float Ki_a = 0;     //未設定
+const float Kd_a = 0;     //未設定
 
 //LPGのPIDゲイン
-const float Kp_g = 0.01;
-const float Ki_g = 0;
-const float Kd_g = 0;
+const float Kp_g = 0.01;  //未設定
+const float Ki_g = 0;     //未設定
+const float Kd_g = 0;     //未設定
 
 //PWMのオフセット
 const int OffSet = 2000;
@@ -83,8 +83,8 @@ void O2_Control(){
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
   x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
-  /* 制御計算 */
   double e = r_o - x; //誤差
+  /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet); //制御入力を計算
   etmp_o = e; //1ステップ前の誤差を更新
   sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
@@ -123,7 +123,7 @@ void Air_Control(){
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
-  AirPWMset = u;//Air PWM
+  AirPWMset = u; //Air PWM
   #ifdef DEBUG
   Serial.print("Air=");
   Serial.print(x);
@@ -152,7 +152,7 @@ void LPG_Control(){
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
-  LPGPWMset = u;//LPG PWM
+  LPGPWMset = u; //LPG PWM
   #ifdef DEBUG
   Serial.print("LPG=");
   Serial.print(x);
