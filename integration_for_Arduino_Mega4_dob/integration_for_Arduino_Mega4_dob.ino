@@ -2,8 +2,6 @@
 //#define DEBUG_FLOW  //流量系統のデバッグ
 //#define DEBUG_SENS  //センサ系のデバッグ用
 
-#include "integration_for_Arduino_Mega4_dob.h"  //ライブラリとピン定義
-
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
@@ -54,9 +52,12 @@
 //////////////通信系定数//////////////
 #define IG_TIME 30 //イグナイタ点火時間
 #define IG_TIME_DELAY 50
+#define FLOW_TIME 10
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 /////////////////////////////////////
+
+#include "integration_for_Arduino_Mega4_dob.h"  //ライブラリとピン定義
 
 float u_d = 0;
 
@@ -131,7 +132,7 @@ void TIME_Interrupt(void){
     Air_Control();
     LPG_Control();
   }
-  else {
+  else{
     O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
@@ -156,12 +157,12 @@ void Serial_print(void){
 //////////////////////PID制御関数///////////////////////////
 void Diaphragm_control(){
   /* 変数設定 */
-  static float e_d_tmp = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
+  static float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
   float x_d = Pressure_IN; //現在の圧力
   float e_d = r_d - x_d; //誤差
   /* 制御計算 */
-  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - e_d_tmp) / (Ts * 1e-3)); //制御入力を計算
-  e_d_tmp = e_d; //誤差を更新
+  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
+  etmp_d = e_d; //誤差を更新
   sum_d += (Ts * 1e-3) * e_d; //誤差の総和を更新
   /* 上下限設定 */
   if(sum_d > sum_d_max) sum_d = sum_d_max;
@@ -179,7 +180,7 @@ void Diaphragm_control(){
 
 void O2_Control(){
   /* 変数設定 */
-  static double e_o_tmp = 0, sum = 0; //1ステップ前の誤差, 誤差の総和
+  static double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
   double x = 0; //現在の流量
   int16_t u = 0; //制御入力
   x = analogRead(O2_flow);
@@ -187,12 +188,12 @@ void O2_Control(){
   x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
   /* 制御計算 */
   double e = r_o - x; //誤差
-  u = int16_t(Kp_o * e + Ki_o * sum + Kd_o * (e - e_o_tmp) / (Ts * 1e-3) + OffSet); //制御入力を計算
-  e_o_tmp = e; //1ステップ前の誤差を更新
-  sum += (Ts * 1e-3) * e; //誤差の総和を更新
+  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet); //制御入力を計算
+  etmp_o = e; //1ステップ前の誤差を更新
+  sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
   /* 上下限設定 */
-  if(sum > sum_max) sum = sum_max;
-  else if (sum < sum_min) sum = sum_min;
+  if(sum_o > sum_max) sum_o = sum_max;
+  else if(sum_o < sum_min) sum_o = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -208,21 +209,20 @@ void O2_Control(){
 
 void Air_Control(){
   /* 変数設定 */
+  static double etmp_a = 0, sum_a = 0;
   double x = 0;
   int16_t u = 0;
-  static double sum = 0;
-  static double e_a_tmp = 0;
   x = analogRead(Air_flow);
   x = x * 5 / 1024;
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   /* 制御計算 */
-  u = int16_t(Kp_a * e + Ki_a * sum + Kd_a * (e - e_a_tmp) / (Ts * 1e-3) + OffSet);
-  e_a_tmp = e;
-  sum += (Ts * 1e-3) * e;
+  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet);
+  etmp_a = e;
+  sum_a += (Ts * 1e-3) * e;
   /* 上下限設定 */
-  if(sum > sum_max) sum = sum_max;
-  else if (sum < sum_min) sum = sum_min;
+  if(sum_a > sum_max) sum_a = sum_max;
+  else if(sum_a < sum_min) sum_a = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -238,21 +238,20 @@ void Air_Control(){
 
 void LPG_Control(){
   /* 変数設定 */
+  static double etmp_g = 0, sum_g = 0;
   double x = 0;
   int16_t u = 0;
-  static double sum = 0;
-  static double e_g_tmp = 0;
   x = analogRead(LPG_flow);
   x = x * 5 / 1024;
   x = 0.0528 * x * x -0.0729 * x+ 0.0283;
   double e = r_g - x;
   /* 制御計算 */
-  u = int16_t(Kp_g * e + Ki_g * sum + Kd_g * (e - e_g_tmp) / (Ts * 1e-3) + OffSet);
-  e_g_tmp = e;
-  sum += (Ts * 1e-3) * e;
+  u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * (e - etmp_g) / (Ts * 1e-3) + OffSet);
+  etmp_g = e;
+  sum_g += (Ts * 1e-3) * e;
   /* 上下限設定 */
-  if(sum > sum_max) sum=sum_max;
-  else if (sum < sum_min) sum = sum_min;
+  if(sum_g > sum_max) sum_g=sum_max;
+  else if (sum_g < sum_min) sum_g = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */

@@ -301,12 +301,12 @@ void Pressure_IG(){
   }
 }
 
-//void IG_Pulse(){
-//   IG_flag = 1;
-//   Flow_flag = 1;
-//   IG_count = IG_TIME+IG_TIME_DELAY;
-//   Pulse_Count = FLOW_TIME*20 ;
-//}
+void IG_Pulse(){
+   IG_flag = 1;
+   Flow_flag = 1;
+   IG_count = IG_TIME+IG_TIME_DELAY;
+   Pulse_Count = FLOW_TIME*20 ;
+}
 
 //////////////////////////////////////////////////////////////////
 
