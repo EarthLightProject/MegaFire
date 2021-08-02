@@ -1,5 +1,6 @@
 //#define DEBUG_PRESS   //気圧制御のデバッグ用
 //#define DEBUG_FLOW  //流量系統のデバッグ
+//#define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 //#define DEBUG_SENS  //センサ系のデバッグ用
 
 //////////制御定数定義/////////////
@@ -46,15 +47,15 @@
 #define Servo_INVERT 127
 
 //ダイアフラム制御周期
-#define D_COUNT 2 //×Ts(ms)
+#define D_COUNT 1 //×Ts(ms)
 /////////////////////////////////////
 
 //////////////通信系定数//////////////
 #define IG_TIME 30 //イグナイタ点火時間
-#define IG_TIME_DELAY 50
-#define FLOW_TIME 10
+#define IG_TIME_DELAY 50 //イグナイタの点火遅れ時間(先に燃料噴射)
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
+#define FLOW_TIME 20
 /////////////////////////////////////
 
 #include "integration_for_Arduino_Mega4_dob.h"  //ライブラリとピン定義
@@ -66,11 +67,14 @@ void setup()
   pinSetup();            //IOピンの設定
   change_freq1(2);       //PWMの周期変更31.37kHz
   wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
+  analogWrite(IGPWM,0);
   Serial.begin(9600);    //LoRaとの通信開始
   Serial.println("Hello");
   GNSSsetup();
+  wdt_reset();
   Wire.begin();          //I2C通信開始
   setupBME280();
+  SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとTIME_Interruptを呼び出す
   MsTimer2::start();
@@ -80,33 +84,34 @@ void loop()
 {
   BME280_OUT_data();
   BME280_IN_data();
-  //Diaphragm_control();
   Create_Buffer_BME280_OUT();
   Create_Buffer_BME280_IN();
   SDWriteData();
   IG_Get(IG_TIME+IG_TIME_DELAY); 
   if(time_flag!=0){
-      GNSS_data();
-      Create_Buffer_GNSS();
-      Create_Buffer_TIME();
-      myFile.write(',');
-      myFile.print(Buffer_GNSS);
-      myFile.write(',');
-      myFile.print(Buffer_TIME);
-      time_flag=0;
-      if(timecount > (int)(SENDTIME*1000/Ts)){
-        Serial_print();
-        RECEVE_Str.remove(0);
-        /*if((digitalRead(IGsig)==1) && (IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
-          Serial.write(",IG");
-          myFile.write(",IG");
-        }*/
-        Serial.write(',');
-        Serial.print(Flow_flag);
-        Serial.println(); 
-        timecount=0;
-      }
+    GNSS_data();
+    Create_Buffer_GNSS();
+    Create_Buffer_TIME();
+    myFile.write(',');
+    myFile.print(Buffer_GNSS);
+    myFile.write(',');
+    myFile.print(Buffer_TIME);
+    time_flag=0;
+    if(timecount > (int)(SENDTIME*1000/POLLING)){
+      Serial_print();
+      RECEVE_Str.remove(0);
+      /*if((IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
+        Serial.write(",IG");
+        myFile.write(",IG");
+      }*/
+      Serial.write(',');
+      if(analogRead(Thermocouple_PIN)>250&&Flow_flag==1)  Serial.write('2');
+      else Serial.print(Flow_flag);
+      Serial.println(); 
+      timecount=0;
     }
+  }
+  Pressure_IG();
   myFile.println();
   myFile.flush(); 
 }
@@ -117,40 +122,54 @@ void TIME_Interrupt(void){
   wdt_reset();
   timecount++;
   if(timecount>(int)(1000/Ts)) time_flag=1;
-  
-  /*if(Diaphram_count>D_COUNT){
-    sei();
-    x_d = BME280_IN.readFloatPressure() / 100; //hPa
-    //cli();
-    Diaphragm_control();
-    Diaphram_count=0;
-  }*/
-  else Diaphram_count++;
+  // if(Diaphram_count>D_COUNT){
+  //   sei();
+  //   BME280_OUT_data();
+  //   BME280_IN_data();
+  //   //Pressure_IN = BME280_IN.readFloatPressure() / 100; //hPa
+  //   cli();
+  //   Diaphragm_control();
+  //   Diaphram_count=0;
+  // }
+  // else Diaphram_count++;
   
   if(Flow_flag==1){
     O2_Control();
     Air_Control();
     LPG_Control();
   }
-  else{
+  else {
     O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
   }
   
   if(IG_flag==1){
-     IG_count--;
-     if(IG_count<1){
+    IG_count--;
+    if(IG_count<1){
       IG_flag=0;
       analogWrite(IGPWM,0);
-     }
-   else if(IG_count<(IG_TIME_DELAY)) analogWrite(IGPWM,30);
+      }
+    else if(IG_count<(IG_TIME_DELAY)) analogWrite(IGPWM,30);
+  }
+  if(Pulse_Count>0){
+    Pulse_Count--;
+    if(Pulse_Count<2) Flow_flag=0;
   }
 }
 
 void Serial_print(void){
- Serial.print(Buffer_BME280_IN);
- Serial.print(Buffer_GNSS); 
+  Serial.print(Buffer_BME280_OUT);
+  //Serial.write(',');
+  #ifdef DEBUG_FLOW_LORA
+  Serial.print(Flow_data_LoRa[0]);
+  Serial.write(',');
+  Serial.print(Flow_data_LoRa[1]);
+  Serial.write(',');
+  Serial.print(Flow_data_LoRa[2]);
+  #else
+  Serial.print(Buffer_GNSS); 
+  #endif
 }
 ///////////////////////////////////////////////////////////
 
@@ -198,6 +217,7 @@ void O2_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   O2PWMset = u; //O2 PWM
+  Flow_data_LoRa[0] = x;
   #ifdef DEBUG_FLOW
   Serial.print("O2=");
   Serial.print(x);
@@ -227,6 +247,7 @@ void Air_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   AirPWMset = u;//Air PWM
+  Flow_data_LoRa[1] = x;
   #ifdef DEBUG_FLOW
   Serial.print("Air=");
   Serial.print(x);
@@ -256,6 +277,7 @@ void LPG_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   LPGPWMset = u;//LPG PWM
+  Flow_data_LoRa[2] = x;
   #ifdef DEBUG_FLOW
   Serial.print("LPG=");
   Serial.print(x);

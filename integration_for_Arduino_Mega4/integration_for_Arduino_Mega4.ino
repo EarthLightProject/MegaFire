@@ -60,7 +60,6 @@
 
 #include "integration_for_Arduino_Mega4.h"  //ライブラリとピン定義
 
-
 float Servo_Input=0;
 
 void setup()
@@ -79,7 +78,6 @@ void setup()
   Servo_Diaphragm.attach(Servo_PWM);
   MsTimer2::set(POLLING, TIME_Interrupt); // POLLINGごとにオンオフ
   MsTimer2::start();
-  
 }
 
 void loop()
