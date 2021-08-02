@@ -62,8 +62,7 @@
 
 float u_d = 0;
 
-void setup()
-{
+void setup(){
   pinSetup();            //IOピンの設定
   change_freq1(2);       //PWMの周期変更31.37kHz
   wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
@@ -80,8 +79,7 @@ void setup()
   MsTimer2::start();
 }
 
-void loop()
-{
+void loop(){
   BME280_OUT_data();
   BME280_IN_data();
   Create_Buffer_BME280_OUT();
@@ -97,7 +95,7 @@ void loop()
     myFile.write(',');
     myFile.print(Buffer_TIME);
     time_flag=0;
-    if(timecount > (int)(SENDTIME*1000/POLLING)){
+    if(timecount > (int)(SENDTIME*1000/Ts)){
       Serial_print();
       RECEVE_Str.remove(0);
       /*if((IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
