@@ -13,33 +13,33 @@
 
 //////////制御定数定義/////////////
 //制御周期
-#define Ts 50     //ms
+const int Ts = 50;     //ms
 
 //各制御の目標値
-#define r_o 0.08  //L/min
-#define r_a 0.7   //L/min
-#define r_g 0.08  //L/min
+const float r_o = 0.08;  //L/min
+const float r_a = 0.7;   //L/min
+const float r_g = 0.08;  //L/min
 
 //O2のPIDゲイン
-#define Kp_o 0.01
-#define Ki_o 0
-#define Kd_o 0
+const float Kp_o = 0.01;
+const float Ki_o = 0;
+const float Kd_o = 0;
 
 //空気のPIDゲイン
-#define Kp_a 0.01
-#define Ki_a 0
-#define Kd_a 0
+const float Kp_a = 0.01;
+const float Ki_a = 0;
+const float Kd_a = 0;
 
 //LPGのPIDゲイン
-#define Kp_g 0.01
-#define Ki_g 0
-#define Kd_g 0
+const float Kp_g = 0.01;
+const float Ki_g = 0;
+const float Kd_g = 0;
 
 //PWMのオフセット
-#define OffSet 2000
+const int OffSet = 2000;
 //流量系統の積分偏差の上限下限設定
-#define sum_max  5
-#define sum_min -5
+const int sum_max =  5;
+const int sum_min = -5;
 /////////////////////////////////////
 
 void change_freq1(int divide);
@@ -95,7 +95,7 @@ void O2_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   O2PWMset = u; //O2 PWM
-  #ifdef DEBUG_FLOW
+  #ifdef DEBUG
   Serial.print("O2=");
   Serial.print(x);
   Serial.write(',');
@@ -124,7 +124,7 @@ void Air_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   AirPWMset = u;//Air PWM
-  #ifdef DEBUG_FLOW
+  #ifdef DEBUG
   Serial.print("Air=");
   Serial.print(x);
   Serial.write(',');
@@ -153,7 +153,7 @@ void LPG_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   LPGPWMset = u;//LPG PWM
-  #ifdef DEBUG_FLOW
+  #ifdef DEBUG
   Serial.print("LPG=");
   Serial.print(x);
   Serial.write(',');
