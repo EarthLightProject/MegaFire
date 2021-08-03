@@ -11,32 +11,32 @@
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPID項
-#define Kp_o 0.01  //O2制御の比例項
-#define Ki_o 0
-#define Kd_o 0
+#define Kp_o 1711  //O2制御の比例項
+#define Ki_o 3518
+#define Kd_o -93.33
+#define N_o 4.459
+#define OffSet_o 1900
 
 //空気のPID項
-#define Kp_a 0.01  //空気制御の比例項
-#define Ki_a 0
-#define Kd_a 0
+#define Kp_a 456.2  //空気制御の比例項
+#define Ki_a 938.1
+#define Kd_a -24.89
+#define N_a 4.459
+#define OffSet_a 2000
 
 //LPGのPID項
-#define Kp_g 0.01  //LPG制御の比例項
-#define Ki_g 0
-#define Kd_g 0
+#define Kp_g 1711  //LPG制御の比例項
+#define Ki_g 3518
+#define Kd_g -93.33
+#define N_g 4.459
+#define OffSet_g 1900
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.01
 #define Ki_d 0
 #define Kd_d 0
-
-//流量系統PWMのオフセット
-#define OffSet 2000
-#define OffSet_Diaphragm (30)
-
-//流量系統の積分偏差の上限下限設定
-#define sum_max  5
-#define sum_min -5
+#define N_d 1
+#define OffSet_d (30)
 
 //ダイアフラム制御の積分偏差の上限下限
 #define sum_d_max 30
@@ -178,7 +178,7 @@ void Diaphragm_control(){
   float x_d = Pressure_IN; //現在の圧力
   float e_d = r_d - x_d; //誤差
   /* 制御計算 */
-  u_d = OffSet_Diaphragm - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
+  u_d = OffSet_d - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
   etmp_d = e_d; //誤差を更新
   sum_d += (Ts * 1e-3) * e_d; //誤差の総和を更新
   /* 上下限設定 */
@@ -201,16 +201,14 @@ void O2_Control(){
   double x = 0; //現在の流量
   int16_t u = 0; //制御入力
   x = analogRead(O2_flow);
-  x = x * 5 / 1024;
+  x = x * 5 / 1024; //(V) 電圧値に戻す
   x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
   double e = r_o - x; //誤差
   /* 制御計算 */
-  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet); //制御入力を計算
+  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * N_o * (e - etmp_o) / (1 + N_o * Ts * 1e-3) + OffSet_o); //制御入力を計算
   etmp_o = e; //1ステップ前の誤差を更新
   sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
   /* 上下限設定 */
-  if(sum_o > sum_max) sum_o = sum_max;
-  else if(sum_o < sum_min) sum_o = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -235,12 +233,10 @@ void Air_Control(){
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   /* 制御計算 */
-  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet);
+  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * N_a * (e - etmp_a) / (1 + N_a * Ts * 1e-3) + OffSet_a);
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
   /* 上下限設定 */
-  if(sum_a > sum_max) sum_a = sum_max;
-  else if(sum_a < sum_min) sum_a = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -265,12 +261,10 @@ void LPG_Control(){
   x = 0.0528 * x * x -0.0729 * x+ 0.0283;
   double e = r_g - x;
   /* 制御計算 */
-  u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * (e - etmp_g) / (Ts * 1e-3) + OffSet);
+  u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * N_g * (e - etmp_g) / (1 + N_g * Ts * 1e-3) + OffSet_g);
   etmp_g = e;
   sum_g += (Ts * 1e-3) * e;
   /* 上下限設定 */
-  if(sum_g > sum_max) sum_g=sum_max;
-  else if (sum_g < sum_min) sum_g = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
