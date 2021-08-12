@@ -26,8 +26,8 @@ const float Ki_o = 0;    //未設定
 const float Kd_o = 0;     //未設定
 
 //空気のPIDゲイン
-const float Kp_a = 250;  //未設定
-const float Ki_a = 150;     //未設定
+const float Kp_a = 250;
+const float Ki_a = 150;
 const float Kd_a = 0;     //未設定
 
 //LPGのPIDゲイン
@@ -39,6 +39,9 @@ const float Kd_g = 0;     //未設定
 const int OffSet_o = 2000;
 const int OffSet_a = 1950;
 const int OffSet_g = 2000;
+
+//外乱オブザーバのLPFのカットオフ周波数
+const float g = 300;
 
 //流量系統の積分偏差の上限下限設定
 const int sum_max =  5;
@@ -109,29 +112,35 @@ void O2_Control(){
 
 void Air_Control(){
   /* 変数設定 */
-  static double etmp_a = 0, sum_a = 0;
+  static double etmp_a = 0, sum_a = 0, ztmp_a = 0, itmp_a = 0;
   double x = 0;
-  int16_t u = 0;
+  double z = 0;
+  double u = 0;
+  int16_t i = 0;
   x = analogRead(Air_flow);
   x = x * 5 / 1024;
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   /* 制御計算 */
-  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + Offset_a);
+  u = Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet_a);
+  z = -g * ztmp_a + g * itmp_a + (g^2 / 0.003) * (x - 5.4203);
+  i = int16_t(u + z - g / 0.003);
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
+  ztmp_a = z;
+  itmp_a = i;
   /* 上下限設定 */
   // if(sum_a > sum_max) sum_a = sum_max;
   // else if(sum_a < sum_min) sum_a = sum_min;
-  if(u > 4095) u = 4095;
-  else if(u < 0) u = 0;
+  if(i > 4095) i = 4095;
+  else if(i < 0) i = 0;
   /* 入力 */
-  AirPWMset = u; //Air PWM
+  AirPWMset = i; //Air PWM
   #ifdef DEBUG
   Serial.print("Air=");
   Serial.print(x);
   Serial.write(',');
-  Serial.print(u);
+  Serial.print(i);
   Serial.write(',');
   #endif
 }
