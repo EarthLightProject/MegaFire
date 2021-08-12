@@ -1,5 +1,5 @@
 // #define DEBUG_PRESS   //気圧制御のデバッグ用
-// #define DEBUG_FLOW  //流量系統のデバッグ
+#define DEBUG_FLOW  //流量系統のデバッグ
 // #define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 // #define DEBUG_SENS  //センサ系のデバッグ用
 
@@ -10,32 +10,35 @@
 #define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
-//O2のPID項
-#define Kp_o 1711  //O2制御の比例項
-#define Ki_o 3518
-#define Kd_o -93.33
-#define N_o 4.459
-#define OffSet_o 1900
+//O2のPIDゲイン
+const float Kp_o = 400;
+const float Ki_o = 300;
+const float Kd_o = 10;
 
-//空気のPID項
-#define Kp_a 456.2  //空気制御の比例項
-#define Ki_a 938.1
-#define Kd_a -24.89
-#define N_a 4.459
-#define OffSet_a 2000
+//空気のPIDゲイン
+const float Kp_a = 350;
+const float Ki_a = 300;
+const float Kd_a = 0.001;
 
-//LPGのPID項
-#define Kp_g 1711  //LPG制御の比例項
-#define Ki_g 3518
-#define Kd_g -93.33
-#define N_g 4.459
-#define OffSet_g 1900
+//LPGのPIDゲイン
+const float Kp_g = 450;
+const float Ki_g = 600;
+const float Kd_g = 1;
+
+//PWMのオフセット
+const int OffSet_o = 2000;
+const int OffSet_a = 1950;
+const int OffSet_g = 2000;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
 #define Ki_d 0.03
 #define Kd_d 0.01
 #define OffSet_d (30)
+
+//流量系統の積分偏差の上限下限設定
+const int sum_max =  5;
+const int sum_min = -5;
 
 //ダイアフラム制御の積分偏差の上限下限
 #define sum_d_max 30
@@ -67,7 +70,7 @@ void setup(){
   wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
   analogWrite(IGPWM,0);
   Serial.begin(9600);    //LoRaとの通信開始
-  Serial.println("Hello");
+  Serial.println("MegaFire_pid");
   GNSSsetup();
   wdt_reset();
   Wire.begin();          //I2C通信開始
@@ -201,7 +204,7 @@ void O2_Control(){
   int16_t u = 0; //制御入力
   y = analogRead(O2_flow);
   y = y * 5 / 1024; //(V) 電圧値に戻す
-  y = 0.0192 * y * y + 0.0074 * y - 0.0217; //流量の線形フィッティング
+  y = 0.0528 * y * y -0.0729 * y + 0.0283 - 0.06; //流量の線形フィッティング
   double e = r_o - y; //誤差
   /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算
@@ -257,10 +260,10 @@ void LPG_Control(){
   int16_t u = 0;
   y = analogRead(LPG_flow);
   y = y * 5 / 1024;
-  y = 0.0528 * y * y -0.0729 * y+ 0.0283;
+  y = 0.0192 * y * y + 0.0074 * y - 0.0217;
   double e = r_g - y;
   /* 制御計算 */
-  u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * N_g * (e - etmp_g) / (1 + N_g * Ts * 1e-3) + OffSet_g);
+  u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * (e - etmp_g) / (Ts * 1e-3) + OffSet_g);
   etmp_g = e;
   sum_g += (Ts * 1e-3) * e;
   /* 上下限設定 */
