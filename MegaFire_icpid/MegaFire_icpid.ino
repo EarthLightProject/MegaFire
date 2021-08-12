@@ -1,5 +1,5 @@
 //#define DEBUG_PRESS   //気圧制御のデバッグ用
-//#define DEBUG_FLOW  //流量系統のデバッグ
+#define DEBUG_FLOW  //流量系統のデバッグ
 //#define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 //#define DEBUG_SENS  //センサ系のデバッグ用
 
@@ -32,10 +32,9 @@
 #define OffSet_g 1900
 
 //燃焼器内気圧のPID項
-#define Kp_d 0.01
-#define Ki_d 0
-#define Kd_d 0
-#define N_d 1
+#define Kp_d 0.05
+#define Ki_d 0.03
+#define Kd_d 0.01
 #define OffSet_d (30)
 
 //ダイアフラム制御の積分偏差の上限下限
@@ -58,7 +57,7 @@
 #define FLOW_TIME 20
 /////////////////////////////////////
 
-#include "integration_for_Arduino_Mega4_dob.h"  //ライブラリとピン定義
+#include "MegaFire_icpid.h"  //ライブラリとピン定義
 
 float u_d = 0;
 
@@ -175,8 +174,8 @@ void Serial_print(void){
 void Diaphragm_control(){
   /* 変数設定 */
   static float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
-  float x_d = Pressure_IN; //現在の圧力
-  float e_d = r_d - x_d; //誤差
+  float y_d = Pressure_IN; //現在の圧力
+  float e_d = r_d - y_d; //誤差
   /* 制御計算 */
   u_d = OffSet_d - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
   etmp_d = e_d; //誤差を更新
@@ -189,7 +188,7 @@ void Diaphragm_control(){
   /* 入力 */
   Servo_Diaphragm.write(u_d);
   #ifdef DEBUG_PRESS
-  +Serial.print(x_d);
+  +Serial.print(y_d);
   Serial.write(',');
   Serial.println(u_d);
   #endif
@@ -198,12 +197,12 @@ void Diaphragm_control(){
 void O2_Control(){
   /* 変数設定 */
   static double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
-  double x = 0; //現在の流量
+  double y = 0; //現在の流量
   int16_t u = 0; //制御入力
-  x = analogRead(O2_flow);
-  x = x * 5 / 1024; //(V) 電圧値に戻す
-  x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
-  double e = r_o - x; //誤差
+  y = analogRead(O2_flow);
+  y = y * 5 / 1024; //(V) 電圧値に戻す
+  y = 0.0192 * y * y + 0.0074 * y - 0.0217; //流量の線形フィッティング
+  double e = r_o - y; //誤差
   /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * N_o * (e - etmp_o) / (1 + N_o * Ts * 1e-3) + OffSet_o); //制御入力を計算
   etmp_o = e; //1ステップ前の誤差を更新
@@ -213,10 +212,10 @@ void O2_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   O2PWMset = u; //O2 PWM
-  Flow_data_LoRa[0] = x;
+  Flow_data_LoRa[0] = y;
   #ifdef DEBUG_FLOW
   Serial.print("O2=");
-  Serial.print(x);
+  Serial.print(y);
   Serial.write(',');
   Serial.print(u);
   Serial.write(',');
@@ -226,12 +225,12 @@ void O2_Control(){
 void Air_Control(){
   /* 変数設定 */
   static double etmp_a = 0, sum_a = 0;
-  double x = 0;
+  double y = 0;
   int16_t u = 0;
-  x = analogRead(Air_flow);
-  x = x * 5 / 1024;
-  x = 0.0528 * x * x -0.0729 * x + 0.0283;
-  double e = r_a - x;
+  y = analogRead(Air_flow);
+  y = y * 5 / 1024;
+  y = 0.0528 * y * y -0.0729 * y + 0.0283;
+  double e = r_a - y;
   /* 制御計算 */
   u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * N_a * (e - etmp_a) / (1 + N_a * Ts * 1e-3) + OffSet_a);
   etmp_a = e;
@@ -241,10 +240,10 @@ void Air_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   AirPWMset = u;//Air PWM
-  Flow_data_LoRa[1] = x;
+  Flow_data_LoRa[1] = y;
   #ifdef DEBUG_FLOW
   Serial.print("Air=");
-  Serial.print(x);
+  Serial.print(y);
   Serial.write(',');
   Serial.print(u);
   Serial.write(',');
@@ -254,12 +253,12 @@ void Air_Control(){
 void LPG_Control(){
   /* 変数設定 */
   static double etmp_g = 0, sum_g = 0;
-  double x = 0;
+  double y = 0;
   int16_t u = 0;
-  x = analogRead(LPG_flow);
-  x = x * 5 / 1024;
-  x = 0.0528 * x * x -0.0729 * x+ 0.0283;
-  double e = r_g - x;
+  y = analogRead(LPG_flow);
+  y = y * 5 / 1024;
+  y = 0.0528 * y * y -0.0729 * y+ 0.0283;
+  double e = r_g - y;
   /* 制御計算 */
   u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * N_g * (e - etmp_g) / (1 + N_g * Ts * 1e-3) + OffSet_g);
   etmp_g = e;
@@ -269,10 +268,10 @@ void LPG_Control(){
   else if(u < 0) u = 0;
   /* 入力 */
   LPGPWMset = u;//LPG PWM
-  Flow_data_LoRa[2] = x;
+  Flow_data_LoRa[2] = y;
   #ifdef DEBUG_FLOW
   Serial.print("LPG=");
-  Serial.print(x);
+  Serial.print(y);
   Serial.write(',');
   Serial.println(u);
   #endif
