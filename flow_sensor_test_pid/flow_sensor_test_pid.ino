@@ -1,6 +1,6 @@
-#define O2_flow A0
+#define O2_flow A2 //A0から変更
 #define Air_flow A1
-#define LPG_flow A2
+#define LPG_flow A0 //A2から変更
 #define LPG_PWM 2
 #define Air_PWM 3
 #define O2_PWM 5
@@ -21,19 +21,19 @@ const float r_a = 0.7;   //L/min
 const float r_g = 0.08;  //L/min
 
 //O2のPIDゲイン
-const float Kp_o = 10;  //未設定
-const float Ki_o = 0;    //未設定
-const float Kd_o = 0;     //未設定
+const float Kp_o = 400;
+const float Ki_o = 300;
+const float Kd_o = 10;
 
 //空気のPIDゲイン
-const float Kp_a = 250;  //未設定
-const float Ki_a = 150;     //未設定
-const float Kd_a = 0;     //未設定
+const float Kp_a = 350;
+const float Ki_a = 300;
+const float Kd_a = 0.001;
 
 //LPGのPIDゲイン
-const float Kp_g = 0.1;  //未設定
-const float Ki_g = 0;     //未設定
-const float Kd_g = 0;     //未設定
+const float Kp_g = 450;
+const float Ki_g = 600;
+const float Kd_g = 1;
 
 //PWMのオフセット
 const int OffSet_o = 2000;
@@ -81,11 +81,11 @@ void change_freq1(int divide){
 void O2_Control(){
   /* 変数設定 */
   static double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
-  double x = 0; //現在の流量
+  double x = 0, y = 0; //現在の流量
   int16_t u = 0; //制御入力
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
-  x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
+  x = 0.0528 * x * x -0.0729 * x + 0.0283 - 0.06;
   double e = r_o - x; //誤差
   /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算
@@ -117,7 +117,7 @@ void Air_Control(){
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   /* 制御計算 */
-  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + Offset_a);
+  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet_a);
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
   /* 上下限設定 */
@@ -143,7 +143,7 @@ void LPG_Control(){
   int16_t u = 0;
   x = analogRead(LPG_flow);
   x = x * 5 / 1024;
-  x = 0.0528 * x * x -0.0729 * x+ 0.0283;
+  x = 0.0192 * x * x + 0.0074 * x - 0.0217; //流量の線形フィッティング
   double e = r_g - x;
   /* 制御計算 */
   u = int16_t(Kp_g * e + Ki_g * sum_g + Kd_g * (e - etmp_g) / (Ts * 1e-3) + OffSet_g);

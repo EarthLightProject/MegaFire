@@ -1,6 +1,6 @@
-#define O2_flow A0
+#define O2_flow A2 //A0から変更
 #define Air_flow A1
-#define LPG_flow A2
+#define LPG_flow A0 //A2から変更
 #define LPG_PWM 2
 #define Air_PWM 3
 #define O2_PWM 5
@@ -21,19 +21,19 @@ const float r_a = 0.7;   //L/min
 const float r_g = 0.08;  //L/min
 
 //O2のPIDゲイン
-const float Kp_o = 10;  //未設定
-const float Ki_o = 0;    //未設定
-const float Kd_o = 0;     //未設定
+const float Kp_o = 400;
+const float Ki_o = 300;
+const float Kd_o = 10;
 
 //空気のPIDゲイン
-const float Kp_a = 250;
-const float Ki_a = 150;
-const float Kd_a = 0;     //未設定
+const float Kp_a = 350;
+const float Ki_a = 300;
+const float Kd_a = 0.001;
 
 //LPGのPIDゲイン
-const float Kp_g = 0.1;  //未設定
-const float Ki_g = 0;     //未設定
-const float Kd_g = 0;     //未設定
+const float Kp_g = 450;
+const float Ki_g = 600;
+const float Kd_g = 1;
 
 //PWMのオフセット
 const int OffSet_o = 2000;
@@ -41,7 +41,7 @@ const int OffSet_a = 1950;
 const int OffSet_g = 2000;
 
 //外乱オブザーバのLPFのカットオフ周波数
-const float g = 300;
+const float g = 0.1;
 
 //流量系統の積分偏差の上限下限設定
 const int sum_max =  5;
@@ -66,9 +66,9 @@ void setup() {
 }
 
 void loop() {
-//  O2_Control();
+  O2_Control();
   Air_Control();
-//  LPG_Control();
+  LPG_Control();
   Serial.println();
   delay(Ts);
 }
@@ -122,8 +122,8 @@ void Air_Control(){
   x = 0.0528 * x * x -0.0729 * x + 0.0283;
   double e = r_a - x;
   /* 制御計算 */
-  u = Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet_a);
-  z = -g * ztmp_a + g * itmp_a + (g^2 / 0.003) * (x - 5.4203);
+  u = Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet_a;
+  z = -g * ztmp_a + g * itmp_a + (g * g / 0.003) * (x - 5.4203);
   i = int16_t(u + z - g / 0.003);
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
@@ -141,6 +141,8 @@ void Air_Control(){
   Serial.print(x);
   Serial.write(',');
   Serial.print(i);
+  Serial.write(',');
+  Serial.print(z);
   Serial.write(',');
   #endif
 }
