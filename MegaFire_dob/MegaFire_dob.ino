@@ -11,24 +11,24 @@
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPID項
-#define Kp_o 1711  //O2制御の比例項
-#define Ki_o 3518
-#define Kd_o -93.33
-#define N_o 4.459
+#define Kp_o 100  //O2制御の比例項
+#define Ki_o 0
+#define Kd_o 0
+#define N_o 5
 #define OffSet_o 1900
 
 //空気のPID項
-#define Kp_a 456.2  //空気制御の比例項
-#define Ki_a 938.1
-#define Kd_a -24.89
-#define N_a 4.459
+#define Kp_a 100  //空気制御の比例項
+#define Ki_a 0
+#define Kd_a 0
+#define N_a 5
 #define OffSet_a 2000
 
 //LPGのPID項
-#define Kp_g 1711  //LPG制御の比例項
-#define Ki_g 3518
-#define Kd_g -93.33
-#define N_g 4.459
+#define Kp_g 100  //LPG制御の比例項
+#define Ki_g 0
+#define Kd_g 0
+#define N_g 5
 #define OffSet_g 1900
 
 //燃焼器内気圧のPID項
@@ -57,7 +57,7 @@
 #define FLOW_TIME 20
 /////////////////////////////////////
 
-#include "MegaFire_icpid.h"  //ライブラリとピン定義
+#include "MegaFire_dob.h"  //ライブラリとピン定義
 
 float u_d = 0;
 
@@ -67,7 +67,7 @@ void setup(){
   wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
   analogWrite(IGPWM,0);
   Serial.begin(9600);    //LoRaとの通信開始
-  Serial.println("Hello");
+  Serial.println("Hello_icpid");
   GNSSsetup();
   wdt_reset();
   Wire.begin();          //I2C通信開始

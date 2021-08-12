@@ -204,7 +204,7 @@ void O2_Control(){
   y = 0.0192 * y * y + 0.0074 * y - 0.0217; //流量の線形フィッティング
   double e = r_o - y; //誤差
   /* 制御計算 */
-  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * N_o * (e - etmp_o) / (1 + N_o * Ts * 1e-3) + OffSet_o); //制御入力を計算
+  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算
   etmp_o = e; //1ステップ前の誤差を更新
   sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
   /* 上下限設定 */
@@ -232,7 +232,7 @@ void Air_Control(){
   y = 0.0528 * y * y -0.0729 * y + 0.0283;
   double e = r_a - y;
   /* 制御計算 */
-  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * N_a * (e - etmp_a) / (1 + N_a * Ts * 1e-3) + OffSet_a);
+  u = int16_t(Kp_a * e + Ki_a * sum_a + Kd_a * (e - etmp_a) / (Ts * 1e-3) + OffSet_a);
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
   /* 上下限設定 */
