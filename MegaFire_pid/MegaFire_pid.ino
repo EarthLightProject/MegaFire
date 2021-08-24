@@ -1,7 +1,7 @@
-// #define DEBUG_PRESS   //気圧制御のデバッグ用
+ #define DEBUG_PRESS   //気圧制御のデバッグ用
 #define DEBUG_FLOW  //流量系統のデバッグ
 // #define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
-// #define DEBUG_SENS  //センサ系のデバッグ用
+#define DEBUG_SENS  //センサ系のデバッグ用
 
 //////////制御定数定義/////////////
 //各制御の目標値
@@ -62,8 +62,6 @@ const int sum_min = -5;
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
 
-float u_d = 0;
-
 void setup(){
   pinSetup();            //IOピンの設定
   change_freq1(2);       //PWMの周期変更31.37kHz
@@ -97,23 +95,23 @@ void loop(){
     myFile.write(',');
     myFile.print(Buffer_TIME);
     time_flag=0;
-    if(timecount > (int)(SENDTIME*1000/Ts)){
-      Serial_print();
-      RECEVE_Str.remove(0);
-      /*if((IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
-        Serial.write(",IG");
-        myFile.write(",IG");
-      }*/
-      Serial.write(',');
-      if(analogRead(Thermocouple_PIN)>250&&Flow_flag==1)  Serial.write('2');
-      else Serial.print(Flow_flag);
-      Serial.println(); 
-      timecount=0;
-    }
+    // if(timecount > (int)(SENDTIME*1000/Ts)){
+    //   Serial_print();
+    //   RECEVE_Str.remove(0);
+    //   /*if((IG_flag != 1)|| (Pressure_OUT<310.0&&Pressure_OUT>1.0&&IG_count<1)){
+    //     Serial.write(",IG");
+    //     myFile.write(",IG");
+    //   }*/
+    //   Serial.write(',');
+    //   if(analogRead(Thermocouple_PIN)>250&&Flow_flag==1)  Serial.write('2');
+    //   else Serial.print(Flow_flag);
+    //   Serial.println(); 
+    //   timecount=0;
+    // }
   }
-  Pressure_IG();
-  myFile.println();
-  myFile.flush(); 
+  // Pressure_IG();
+  // myFile.println();
+  // myFile.flush(); 
 }
 
 ///////////////////////サブ関数////////////////////////////
@@ -122,16 +120,16 @@ void TIME_Interrupt(void){
   wdt_reset();
   timecount++;
   if(timecount>(int)(1000/Ts)) time_flag=1;
-  // if(Diaphram_count>D_COUNT){
-  //   sei();
-  //   BME280_OUT_data();
-  //   BME280_IN_data();
-  //   //Pressure_IN = BME280_IN.readFloatPressure() / 100; //hPa
-  //   cli();
-  //   Diaphragm_control();
-  //   Diaphram_count=0;
-  // }
-  // else Diaphram_count++;
+  //  if(Diaphram_count>D_COUNT){
+  //    sei();
+  //    BME280_OUT_data();
+  //    BME280_IN_data();
+  //    //Pressure_IN = BME280_IN.readFloatPressure() / 100; //hPa
+  //    cli();
+  //    Diaphragm_control();
+  //    Diaphram_count=0;
+  //  }
+   else Diaphram_count++;
   
   if(Flow_flag==1){
     O2_Control();
@@ -152,22 +150,23 @@ void TIME_Interrupt(void){
       }
     else if(IG_count<(IG_TIME_DELAY)) analogWrite(IGPWM,30);
   }
-  if(Pulse_Count>0){
-    Pulse_Count--;
-    if(Pulse_Count<2) Flow_flag=0;
-  }
+  // if(Pulse_Count>0){
+  //   Pulse_Count--;
+  //   if(Pulse_Count<2) Flow_flag=0;
+  // }
 }
 
 void Serial_print(void){
   Serial.print(Buffer_BME280_OUT);
-  //Serial.write(',');
   #ifdef DEBUG_FLOW_LORA
+  Serial.write(',');
   Serial.print(Flow_data_LoRa[0]);
   Serial.write(',');
   Serial.print(Flow_data_LoRa[1]);
   Serial.write(',');
   Serial.print(Flow_data_LoRa[2]);
   #else
+  Serial.write(',');
   Serial.print(Buffer_GNSS); 
   #endif
 }
@@ -177,10 +176,12 @@ void Serial_print(void){
 void Diaphragm_control(){
   /* 変数設定 */
   static float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
+  float u_d = 0;
   float y_d = Pressure_IN; //現在の圧力
   float e_d = r_d - y_d; //誤差
   /* 制御計算 */
-  u_d = OffSet_d - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
+  // u_d = OffSet_d - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
+  u_d = Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3); //制御入力を計算
   etmp_d = e_d; //誤差を更新
   sum_d += (Ts * 1e-3) * e_d; //誤差の総和を更新
   /* 上下限設定 */
@@ -204,7 +205,7 @@ void O2_Control(){
   int16_t u = 0; //制御入力
   y = analogRead(O2_flow);
   y = y * 5 / 1024; //(V) 電圧値に戻す
-  y = 0.0528 * y * y -0.0729 * y + 0.0283 - 0.06; //流量の線形フィッティング
+  y = 0.0192 * y * y + 0.0074 * y - 0.0217; //流量の線形フィッティング
   double e = r_o - y; //誤差
   /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算

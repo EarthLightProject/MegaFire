@@ -19,15 +19,15 @@
 #define IGPWM 11
 #define O2_flow A0
 #define Air_flow A1
-#define LPG_flow A7
-#define LPG_PWM 2
-#define Air_PWM 3
+#define LPG_flow A2
+#define LPG_PWM 3
+#define Air_PWM 2
 #define O2_PWM 5
 #define Thermocouple_PIN A3
 
 #define O2PWMset OCR3A  //Timer3のDuty設定用レジスタ名
-#define AirPWMset OCR3C
-#define LPGPWMset OCR3B
+#define AirPWMset OCR3B
+#define LPGPWMset OCR3C
 
 #define FILE_NAME "DataLog.txt"
 
@@ -279,27 +279,27 @@ void IG_Get(int ig_time){
     }
 }
 
-void Pressure_IG(){
-  if(Pressure_OUT < 1.0) {
+// void Pressure_IG(){
+//   if(Pressure_OUT < 1.0) {
     
-  }
-  else if(Pressure_OUT < 490.0 && IG_point[0]==0){  //5km
-    IG_point[0] = 1;
-    IG_Pulse();
-  }
-  else if(Pressure_OUT < 240.0 && IG_point[1]==0){   //10km
-     IG_point[1] = 1;
-     IG_Pulse();
-  }
-  else if(Pressure_OUT < 115.0 && IG_point[2]==0){   //15km
-     IG_point[2] = 1;
-     IG_Pulse();
-  }
-  else if(Pressure_OUT < 57.0 && IG_point[3]==0){    //20km
-     IG_point[3] = 1;
-     IG_Pulse();
-  }
-}
+//   }
+//   else if(Pressure_OUT < 490.0 && IG_point[0]==0){  //5km
+//     IG_point[0] = 1;
+//     IG_Pulse();
+//   }
+//   else if(Pressure_OUT < 240.0 && IG_point[1]==0){   //10km
+//      IG_point[1] = 1;
+//      IG_Pulse();
+//   }
+//   else if(Pressure_OUT < 115.0 && IG_point[2]==0){   //15km
+//      IG_point[2] = 1;
+//      IG_Pulse();
+//   }
+//   else if(Pressure_OUT < 57.0 && IG_point[3]==0){    //20km
+//      IG_point[3] = 1;
+//      IG_Pulse();
+//   }
+// }
 
 void IG_Pulse(){
    IG_flag = 1;
