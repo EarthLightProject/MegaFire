@@ -279,27 +279,27 @@ void IG_Get(int ig_time){
     }
 }
 
-// void Pressure_IG(){
-//   if(Pressure_OUT < 1.0) {
+/*void Pressure_IG(){
+  if(Pressure_OUT < 1.0) {
     
-//   }
-//   else if(Pressure_OUT < 490.0 && IG_point[0]==0){  //5km
-//     IG_point[0] = 1;
-//     IG_Pulse();
-//   }
-//   else if(Pressure_OUT < 240.0 && IG_point[1]==0){   //10km
-//      IG_point[1] = 1;
-//      IG_Pulse();
-//   }
-//   else if(Pressure_OUT < 115.0 && IG_point[2]==0){   //15km
-//      IG_point[2] = 1;
-//      IG_Pulse();
-//   }
-//   else if(Pressure_OUT < 57.0 && IG_point[3]==0){    //20km
-//      IG_point[3] = 1;
-//      IG_Pulse();
-//   }
-// }
+  }
+  else if(Pressure_OUT < 490.0 && IG_point[0]==0){  //5km
+    IG_point[0] = 1;
+    IG_Pulse();
+  }
+  else if(Pressure_OUT < 240.0 && IG_point[1]==0){   //10km
+     IG_point[1] = 1;
+     IG_Pulse();
+  }
+  else if(Pressure_OUT < 115.0 && IG_point[2]==0){   //15km
+     IG_point[2] = 1;
+     IG_Pulse();
+  }
+  else if(Pressure_OUT < 57.0 && IG_point[3]==0){    //20km
+     IG_point[3] = 1;
+     IG_Pulse();
+  }
+}*/
 
 void IG_Pulse(){
    IG_flag = 1;

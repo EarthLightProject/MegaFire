@@ -69,10 +69,10 @@ void setup(){
   analogWrite(IGPWM,0);
   Serial.begin(9600);    //LoRaとの通信開始
   Serial.println("MegaFire_pid");
-  GNSSsetup();
+//  GNSSsetup();
   wdt_reset();
-  Wire.begin();          //I2C通信開始
-  setupBME280();
+//  Wire.begin();          //I2C通信開始
+//  setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとTIME_Interruptを呼び出す
@@ -80,13 +80,13 @@ void setup(){
 }
 
 void loop(){
-  BME280_OUT_data();
-  BME280_IN_data();
-  Create_Buffer_BME280_OUT();
-  Create_Buffer_BME280_IN();
-  SDWriteData();
-  IG_Get(IG_TIME+IG_TIME_DELAY); 
-  if(time_flag!=0){
+//  BME280_OUT_data();
+//  BME280_IN_data();
+//  Create_Buffer_BME280_OUT();
+//  Create_Buffer_BME280_IN();
+//  SDWriteData();
+IG_Get(IG_TIME+IG_TIME_DELAY); 
+  /*if(time_flag!=0){
     GNSS_data();
     Create_Buffer_GNSS();
     Create_Buffer_TIME();
@@ -94,7 +94,7 @@ void loop(){
     myFile.print(Buffer_GNSS);
     myFile.write(',');
     myFile.print(Buffer_TIME);
-    time_flag=0;
+    time_flag=0;*/
     // if(timecount > (int)(SENDTIME*1000/Ts)){
     //   Serial_print();
     //   RECEVE_Str.remove(0);
@@ -108,7 +108,7 @@ void loop(){
     //   Serial.println(); 
     //   timecount=0;
     // }
-  }
+//  }
   // Pressure_IG();
   // myFile.println();
   // myFile.flush(); 
@@ -158,15 +158,14 @@ void TIME_Interrupt(void){
 
 void Serial_print(void){
   Serial.print(Buffer_BME280_OUT);
+  //Serial.write(',');
   #ifdef DEBUG_FLOW_LORA
-  Serial.write(',');
   Serial.print(Flow_data_LoRa[0]);
   Serial.write(',');
   Serial.print(Flow_data_LoRa[1]);
   Serial.write(',');
   Serial.print(Flow_data_LoRa[2]);
   #else
-  Serial.write(',');
   Serial.print(Buffer_GNSS); 
   #endif
 }

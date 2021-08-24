@@ -1,17 +1,8 @@
-//↓旧基板ピン配置
-//#define O2_flow A2 //A0から変更
-//#define Air_flow A1
-//#define LPG_flow A0 //A2から変更
-//#define LPG_PWM 2
-//#define Air_PWM 3
-
-//↓新基板用ピン配置
-#define O2_flow A0
+#define O2_flow A0 //A0から変更
 #define Air_flow A1
-#define LPG_flow A2
+#define LPG_flow A2 //A2から変更
 #define LPG_PWM 3
 #define Air_PWM 2
-
 #define O2_PWM 5
 #define IGPWM 11
 #define O2PWMset OCR3A
@@ -94,8 +85,7 @@ void O2_Control(){
   int16_t u = 0; //制御入力
   x = analogRead(O2_flow);
   x = x * 5 / 1024;
-//  x = 0.0528 * x * x -0.0729 * x + 0.0283 - 0.06;
-  x = 0.0192 * x * x + 0.0074 * x - 0.0217;
+  x = 0.0192 * x * x + 0.0074 * x - 0.0217; 
   double e = r_o - x; //誤差
   /* 制御計算 */
   u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算
