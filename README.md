@@ -32,3 +32,7 @@ ELPディレクトリ内の任意のプログラムをArduino IDEで開き，マ
 - MegaFire_dob
 
   MegaFire_pidに外乱オブザーバを追加したプログラム
+
+- LoRa_Serial_Master_Slave.ino
+
+  6/26の打上げ時に使ったLoRaのプログラム
