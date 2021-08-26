@@ -10,6 +10,3 @@
 - MegaFire_pid
 
   integration_for_Arduino_Mega4の改良版
-- MegaFire_dob
-
-  MegaFire_pidに外乱オブザーバを追加したプログラム
