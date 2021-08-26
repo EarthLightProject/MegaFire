@@ -191,7 +191,7 @@ void Diaphragm_control(){
   /* 入力 */
   Servo_Diaphragm.write(u_d);
   #ifdef DEBUG_PRESS
-  +Serial.print(y_d);
+  Serial.print(y_d);
   Serial.write(',');
   Serial.println(u_d);
   #endif
