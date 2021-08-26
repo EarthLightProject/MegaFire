@@ -13,26 +13,23 @@ $ git clone https://github.com/nashinokagaku/ELP
 すると，現在のディレクトリに新しく"ELP"というディレクトリが追加される．
 ELPディレクトリ内の任意のプログラムをArduino IDEで開き，マイコンボードに書き込む．
 
-## プログラムの概要
+## ブランチの概要
+- main
+
+  安定動作する本番用の総合プログラム
+
+- development
+
+  mainの開発用
+
 - flow_sensor_test
 
-  流量制御の試験用プログラム（旧）
-- flow_sensor_test_pid
+  流量系統のテスト用プログラム
 
-  flow_sensor_testの改良版．流量制御の試験をするならこれ
-- flow_sensor_test_dob
+- Legacy_Programs
 
-  flow_sensor_test_pidに外乱オブザーバを追加したプログラム
-- integration_for_Arduino_Mega4
+  6/26日の打上で使用した旧プログラム
 
-  本番用プログラム（旧）．流量，燃焼器内圧，点火制御および通信をおこなう
-- MegaFire_pid
+- GREENHOUSE_LoRa_Legacy
 
-  integration_for_Arduino_Mega4の改良版
-- MegaFire_dob
-
-  MegaFire_pidに外乱オブザーバを追加したプログラム
-
-- LoRa_Serial_Master_Slave.ino
-
-  6/26の打上げ時に使ったLoRaのプログラム
+  6/26日の打上げで使用したLoRa用のプログラム
