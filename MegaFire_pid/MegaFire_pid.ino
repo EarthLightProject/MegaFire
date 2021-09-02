@@ -11,19 +11,19 @@
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
-const float Kp_o = 400;
-const float Ki_o = 300;
-const float Kd_o = 10;
+const float Kp_o = 0;
+const float Ki_o = 3000;
+const float Kd_o = 0;
 
 //空気のPIDゲイン
-const float Kp_a = 350;
-const float Ki_a = 300;
-const float Kd_a = 0.001;
+const float Kp_a = 0;
+const float Ki_a = 3000;
+const float Kd_a = 0;
 
 //LPGのPIDゲイン
-const float Kp_g = 450;
-const float Ki_g = 600;
-const float Kd_g = 1;
+const float Kp_g = 0;
+const float Ki_g = 3000;
+const float Kd_g = 0;
 
 //PWMのオフセット
 const int OffSet_o = 2000;
@@ -53,8 +53,8 @@ const int sum_min = -5;
 /////////////////////////////////////
 
 //////////////通信系定数//////////////
-#define IG_TIME 30 //イグナイタ点火時間
-#define IG_TIME_DELAY 50 //イグナイタの点火遅れ時間(先に燃料噴射)
+#define IG_TIME 3 //イグナイタ点火時間
+#define IG_TIME_DELAY 20 //イグナイタの点火遅れ時間(先に燃料噴射)
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
@@ -69,7 +69,6 @@ void setup(){
   analogWrite(IGPWM,0);
   Serial.begin(9600);    //LoRaとの通信開始
   Serial.println("MegaFire_pid");
-//  GNSSsetup();
   wdt_reset();
 //  Wire.begin();          //I2C通信開始
 //  setupBME280();
@@ -85,16 +84,9 @@ void loop(){
 //  Create_Buffer_BME280_OUT();
 //  Create_Buffer_BME280_IN();
 //  SDWriteData();
-IG_Get(IG_TIME+IG_TIME_DELAY); 
+IG_Get(IG_TIME); 
   /*if(time_flag!=0){
-    GNSS_data();
-    Create_Buffer_GNSS();
-    Create_Buffer_TIME();
-    myFile.write(',');
-    myFile.print(Buffer_GNSS);
-    myFile.write(',');
-    myFile.print(Buffer_TIME);
-    time_flag=0;*/
+      time_flag=0;*/
     // if(timecount > (int)(SENDTIME*1000/Ts)){
     //   Serial_print();
     //   RECEVE_Str.remove(0);
@@ -140,15 +132,19 @@ void TIME_Interrupt(void){
     O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
+    
   }
   
   if(IG_flag==1){
-    IG_count--;
+    if(delay_count <1){
+      IG_count--;
+      analogWrite(IGPWM,30);
+    }
+    else delay_count--;
     if(IG_count<1){
       IG_flag=0;
       analogWrite(IGPWM,0);
       }
-    else if(IG_count<(IG_TIME_DELAY)) analogWrite(IGPWM,30);
   }
   // if(Pulse_Count>0){
   //   Pulse_Count--;
@@ -164,9 +160,7 @@ void Serial_print(void){
   Serial.write(',');
   Serial.print(Flow_data_LoRa[1]);
   Serial.write(',');
-  Serial.print(Flow_data_LoRa[2]);
-  #else
-  Serial.print(Buffer_GNSS); 
+  Serial.print(Flow_data_LoRa[2]); 
   #endif
 }
 ///////////////////////////////////////////////////////////

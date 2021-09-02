@@ -1,6 +1,3 @@
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
-#include <u-blox_config_keys.h>
-#include <u-blox_structs.h>
 #include <math.h>
 #include <SPI.h>
 #include <SD.h>
@@ -23,7 +20,10 @@
 #define LPG_PWM 3
 #define Air_PWM 2
 #define O2_PWM 5
-#define Thermocouple_PIN A3
+#define Thermocouple_PIN A4
+#define LoRa_RESET 24
+#define RST_mega 7
+
 
 #define O2PWMset OCR3A  //Timer3のDuty設定用レジスタ名
 #define AirPWMset OCR3B
@@ -37,18 +37,13 @@ float Humidity_IN=0.0,Humidity_OUT=0.0;
 float Pressure_IN=0.0,Pressure_OUT=0.0;
 float Flow_data_LoRa[3]={0};
 int timecount=0, IG_count=0;
-uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0;
-long latitude , longitude , altitude;
-byte Hour, Minute, Second;
-String Buffer_GNSS;
-String Buffer_TIME;
+uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0;
 String Buffer_BME280_OUT;
 String Buffer_BME280_IN;
 String RECEVE_Str;
 ////////////////////////////////////
 
 /////////////クラスの宣言/////////////
-SFE_UBLOX_GNSS myGNSS;
 BME280 BME280_OUT;
 BME280 BME280_IN;
 File myFile;
@@ -58,8 +53,6 @@ Servo Servo_Diaphragm;
 
 ////////////関数の宣言//////////////
 void pinSetup(void);
-void GNSSsetup(void);
-void GNSS_data(void);
 void init_BME280(void);
 void setupBME280(void);
 void BME280_data(void);
@@ -90,6 +83,10 @@ void pinSetup(){
   pinMode(Air_flow,INPUT);
   pinMode(LPG_flow,INPUT);
   pinMode(Thermocouple_PIN,INPUT);
+  pinMode(LoRa_RESET,OUTPUT);
+  pinMode(RST_mega,OUTPUT);
+  digitalWrite(LoRa_RESET,HIGH);
+  digitalWrite(RST_mega,LOW);
   //pinMode(GNSS_RST,OUTPUT);
   //digitalWrite(GNSS_RST,HIGH);
 }
@@ -123,49 +120,6 @@ void SDWriteData(void) {
   }
 }
 //////////////////////////////////////////////////////////////////////
-
-/////////////////////////////////GNSS/////////////////////////////////
-void GNSSsetup(void) {
-  //myGNSS.enableDebugging(); // Uncomment this line to enable debug messages
-  do {
-    #ifdef DEBUG_SENS
-    Serial.println("GNSS: trying 38400 baud");
-    #endif
-    Serial1.begin(38400);
-    if (myGNSS.begin(Serial1) == true) break;
-    delay(100);
-    #ifdef DEBUG_SENS
-    Serial.println("GNSS: trying 9600 baud");
-    #endif
-    Serial1.begin(9600);
-    if (myGNSS.begin(Serial1) == true) {
-        #ifdef DEBUG_SENS
-        Serial.println("GNSS: connected at 9600 baud, switching to 38400");
-        #endif
-        myGNSS.setSerialRate(38400);
-        delay(100);
-    } else {
-        //myGNSS.factoryReset();
-        delay(2000); //Wait a bit before trying again to limit the Serial output
-    }
-  } while(1);
-  #ifdef DEBUG_SENS
-  Serial.println("GNSS serial connected");
-  #endif
-  myGNSS.setUART1Output(COM_TYPE_UBX); //Set the UART port to output UBX only
-  myGNSS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
-  myGNSS.saveConfiguration(); //Save the current settings to flash and BBR
-}
-
-void GNSS_data(void) {
-  latitude = myGNSS.getLatitude();
-  longitude = myGNSS.getLongitude();
-  altitude = myGNSS.getAltitude();
-  Hour = myGNSS.getHour();
-  Minute = myGNSS.getMinute();
-  Second = myGNSS.getSecond();
-}
-//////////////////////////////////////////////////////////////////
 
 ///////////////////////////BME280////////////////////////////////
 void setupBME280(void) {
@@ -212,30 +166,6 @@ void BME280_IN_data(void){
 //////////////////////////////////////////////////////////////////
 
 ///////////////////////////Buffer/////////////////////////////////
-void Create_Buffer_GNSS(void){
-  Buffer_GNSS.remove(0);
-  Buffer_GNSS.concat(latitude/10000000);
-  Buffer_GNSS.concat(".");
-  Buffer_GNSS.concat(latitude%10000000);
-  Buffer_GNSS.concat(",");
-  Buffer_GNSS.concat(longitude/10000000);
-  Buffer_GNSS.concat(".");
-  Buffer_GNSS.concat(longitude%10000000);
-  Buffer_GNSS.concat(",");
-  Buffer_GNSS.concat(altitude/1000);
-  Buffer_GNSS.concat(".");
-  Buffer_GNSS.concat(altitude%1000);
-}
-
-void Create_Buffer_TIME(){
-  Buffer_TIME.remove(0);
-  Buffer_TIME.concat(Hour);
-  Buffer_TIME.concat(",");
-  Buffer_TIME.concat(Minute);
-  Buffer_TIME.concat(",");
-  Buffer_TIME.concat(Second);
-}
-
 void Create_Buffer_BME280_OUT(void){
  // Buffer.concat("Latitude,Longitude,Height\n"); 
   Buffer_BME280_OUT.remove(0);
@@ -271,6 +201,7 @@ void IG_Get(int ig_time){
        IG_flag = 1;
        Flow_flag = !Flow_flag;
        IG_count = ig_time;
+       delay_count = IG_TIME_DELAY;
        #ifdef DEBUG_SENS
        Serial.println("get REIG");
        #endif
