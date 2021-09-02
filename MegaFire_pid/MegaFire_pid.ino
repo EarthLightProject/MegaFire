@@ -65,11 +65,20 @@ const int sum_min = -5;
 void setup(){
   pinSetup();            //IOピンの設定
   change_freq1(2);       //PWMの周期変更31.37kHz
-  wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
   analogWrite(IGPWM,0);
-  Serial.begin(9600);    //LoRaとの通信開始
+  wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
+  Serial.begin(9600);    //PCとの通信開始
   Serial.println("MegaFire_pid");
+  delay(2000);
   wdt_reset();
+  delay(2000);
+  wdt_reset();
+  Serial2.begin(115200);
+  Serial2.println("MegaFire");
+  while(Serial2.available()<4);
+  while(Serial2.available()>0){
+    Serial2.read();
+  }
 //  Wire.begin();          //I2C通信開始
 //  setupBME280();
   SDsetup();
@@ -84,7 +93,11 @@ void loop(){
 //  Create_Buffer_BME280_OUT();
 //  Create_Buffer_BME280_IN();
 //  SDWriteData();
-IG_Get(IG_TIME); 
+IG_Get(IG_TIME);
+IG_Get2(IG_TIME);
+/*if(Serial2.available()>0){
+  Serial.print((char)Serial2.read());
+}*/
   /*if(time_flag!=0){
       time_flag=0;*/
     // if(timecount > (int)(SENDTIME*1000/Ts)){

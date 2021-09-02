@@ -65,6 +65,7 @@ void O2_Conrol();
 void Air_Control();
 void LPG_Control();
 void IG_Get();
+void IG_Get2();
 void Pressure_IG();
 void IG_Pulse();
 /////////////////////////////////
@@ -187,7 +188,7 @@ void Create_Buffer_BME280_IN(void){
 }
 
 void IG_Get(int ig_time){
-  if(Serial.available()>3){
+  if(Serial.available()>5){
      #ifdef DEBUG_SENS
        Serial.println("available");
      #endif
@@ -197,7 +198,31 @@ void IG_Get(int ig_time){
     #ifdef DEBUG_SENS
     Serial.println(RECEVE_Str);
     #endif
-    if(RECEVE_Str.compareTo("REIG") == 0){
+    if(RECEVE_Str.compareTo("REIG\r\n") == 0){
+       IG_flag = 1;
+       Flow_flag = !Flow_flag;
+       IG_count = ig_time;
+       delay_count = IG_TIME_DELAY;
+       #ifdef DEBUG_SENS
+       Serial.println("get REIG");
+       #endif
+      }
+      RECEVE_Str.remove(0);
+    }
+}
+
+void IG_Get2(int ig_time){
+  if(Serial2.available()>5){
+     #ifdef DEBUG_SENS
+       Serial.println("available");
+     #endif
+    do{
+      RECEVE_Str.concat(char(Serial2.read()));
+    }while(Serial2.available()>0);
+    #ifdef DEBUG_SENS
+    Serial.println(RECEVE_Str);
+    #endif
+    if(RECEVE_Str.compareTo("REIG\r\n") == 0){
        IG_flag = 1;
        Flow_flag = !Flow_flag;
        IG_count = ig_time;
