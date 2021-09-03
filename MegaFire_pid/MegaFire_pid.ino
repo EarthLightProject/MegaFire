@@ -6,13 +6,13 @@
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
-#define r_a 0.7  //L/min
+#define r_a 0.6  //L/min
 #define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
-const float Kp_o = 0;
-const float Ki_o = 3000;
+const float Kp_o = 1;
+const float Ki_o = 3500;
 const float Kd_o = 0;
 
 //空気のPIDゲイン
@@ -26,9 +26,9 @@ const float Ki_g = 3000;
 const float Kd_g = 0;
 
 //PWMのオフセット
-const int OffSet_o = 2000;
+const int OffSet_o = 1700;
 const int OffSet_a = 1950;
-const int OffSet_g = 2000;
+const int OffSet_g = 1700;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
@@ -53,8 +53,8 @@ const int sum_min = -5;
 /////////////////////////////////////
 
 //////////////通信系定数//////////////
-#define IG_TIME 3 //イグナイタ点火時間
-#define IG_TIME_DELAY 20 //イグナイタの点火遅れ時間(先に燃料噴射)
+#define IG_TIME 20 //イグナイタ点火時間
+#define IG_TIME_DELAY 40 //イグナイタの点火遅れ時間(先に燃料噴射)
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
@@ -79,8 +79,8 @@ void setup(){
   while(Serial2.available()>0){
     Serial2.read();
   }
-//  Wire.begin();          //I2C通信開始
-//  setupBME280();
+  Wire.begin();          //I2C通信開始
+  setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとTIME_Interruptを呼び出す
@@ -89,12 +89,25 @@ void setup(){
 
 void loop(){
 //  BME280_OUT_data();
-//  BME280_IN_data();
+if(digitalRead(SW1)==1){
+  while(digitalRead(SW1)==1);
+  SD_flag = !SD_flag;
+  Serial.print("Log ");
+  Serial.print(SD_flag);
+  Serial.println();
+}
+
+if(SD_flag==1){
+  BME280_IN_data();
 //  Create_Buffer_BME280_OUT();
-//  Create_Buffer_BME280_IN();
-//  SDWriteData();
-IG_Get(IG_TIME);
-IG_Get2(IG_TIME);
+  Create_Buffer_BME280_IN();
+  SDWriteData();
+  myFile.println();
+  myFile.flush(); 
+}
+//  Serial.println("done");
+  IG_Get(IG_TIME);
+  IG_Get2(IG_TIME);
 /*if(Serial2.available()>0){
   Serial.print((char)Serial2.read());
 }*/
@@ -115,8 +128,7 @@ IG_Get2(IG_TIME);
     // }
 //  }
   // Pressure_IG();
-  // myFile.println();
-  // myFile.flush(); 
+  
 }
 
 ///////////////////////サブ関数////////////////////////////
@@ -140,12 +152,21 @@ void TIME_Interrupt(void){
     O2_Control();
     Air_Control();
     LPG_Control();
+    Create_Buffer_Flow();
   }
   else {
     O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
-    
+    etmp_o = 0;   //1ステップ前の誤差, 誤差の総和
+    sum_o = 0;
+    etmp_a = 0;
+    sum_a = 0;
+    etmp_g = 0;
+    sum_g = 0;
+    Flow_data_LoRa[0] = 0;
+    Flow_data_LoRa[1] = 0;
+    Flow_data_LoRa[2] = 0;
   }
   
   if(IG_flag==1){
@@ -181,7 +202,6 @@ void Serial_print(void){
 //////////////////////PID制御関数///////////////////////////
 void Diaphragm_control(){
   /* 変数設定 */
-  static float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
   float u_d = 0;
   float y_d = Pressure_IN; //現在の圧力
   float e_d = r_d - y_d; //誤差
@@ -206,7 +226,6 @@ void Diaphragm_control(){
 
 void O2_Control(){
   /* 変数設定 */
-  static double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
   double y = 0; //現在の流量
   int16_t u = 0; //制御入力
   y = analogRead(O2_flow);
@@ -234,7 +253,6 @@ void O2_Control(){
 
 void Air_Control(){
   /* 変数設定 */
-  static double etmp_a = 0, sum_a = 0;
   double y = 0;
   int16_t u = 0;
   y = analogRead(Air_flow);
@@ -262,7 +280,6 @@ void Air_Control(){
 
 void LPG_Control(){
   /* 変数設定 */
-  static double etmp_g = 0, sum_g = 0;
   double y = 0;
   int16_t u = 0;
   y = analogRead(LPG_flow);

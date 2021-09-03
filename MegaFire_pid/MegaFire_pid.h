@@ -23,6 +23,9 @@
 #define Thermocouple_PIN A4
 #define LoRa_RESET 24
 #define RST_mega 7
+#define SW1 8
+#define SW2 9
+#define SW3 10
 
 
 #define O2PWMset OCR3A  //Timer3のDuty設定用レジスタ名
@@ -37,9 +40,14 @@ float Humidity_IN=0.0,Humidity_OUT=0.0;
 float Pressure_IN=0.0,Pressure_OUT=0.0;
 float Flow_data_LoRa[3]={0};
 int timecount=0, IG_count=0;
-uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0;
+uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;;
+float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
+double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
+double etmp_a = 0, sum_a = 0;
+double etmp_g = 0, sum_g = 0;
 String Buffer_BME280_OUT;
 String Buffer_BME280_IN;
+String Buffer_Flow;
 String RECEVE_Str;
 ////////////////////////////////////
 
@@ -58,7 +66,6 @@ void setupBME280(void);
 void BME280_data(void);
 void SDsetup(void);
 void Serial_print(void);
-void Create_Buffer(void);
 void SDWriteData(void);
 void Diaphragm_control(void);
 void O2_Conrol();
@@ -116,8 +123,9 @@ void SDWriteData(void) {
   if (myFile) {               // if the file opened okay, write to it:
     myFile.print(millis());
     myFile.write(',');
-    myFile.print(Buffer_BME280_OUT);
     myFile.print(Buffer_BME280_IN);
+    myFile.write(',');
+    myFile.print(Buffer_Flow);
   }
 }
 //////////////////////////////////////////////////////////////////////
@@ -180,11 +188,21 @@ void Create_Buffer_BME280_OUT(void){
 
 void Create_Buffer_BME280_IN(void){
   Buffer_BME280_IN.remove(0);
-  Buffer_BME280_IN.concat(Temp_IN);
-  Buffer_BME280_IN.concat(","); 
-  Buffer_BME280_IN.concat(Humidity_IN);
-  Buffer_BME280_IN.concat(",");
+//  Buffer_BME280_IN.concat(Temp_IN);
+//  Buffer_BME280_IN.concat(","); 
+//  Buffer_BME280_IN.concat(Humidity_IN);
+//  Buffer_BME280_IN.concat(",");
   Buffer_BME280_IN.concat(Pressure_IN);
+  Buffer_BME280_IN.concat(",");
+}
+
+void Create_Buffer_Flow(){
+  Buffer_Flow.remove(0);
+  Buffer_Flow.concat(Flow_data_LoRa[0]);
+  Buffer_Flow.concat(","); 
+  Buffer_Flow.concat(Flow_data_LoRa[1]);
+  Buffer_Flow.concat(",");
+  Buffer_Flow.concat(Flow_data_LoRa[2]);
 }
 
 void IG_Get(int ig_time){
