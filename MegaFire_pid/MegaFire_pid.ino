@@ -126,9 +126,7 @@ void TIME_Interrupt(void){
     sum_o = 0;
     sum_a = 0;
     sum_g = 0;
-    Flow_data[0] = 0;
-    Flow_data[1] = 0;
-    Flow_data[2] = 0;
+    Buffer_Flow = "0,0,0";
   }
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
