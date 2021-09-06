@@ -1,13 +1,14 @@
-#define DEBUG_PRESS   //気圧制御のデバッグ用
+//#define DEBUG_PRESS   //気圧制御のデバッグ用
 #define DEBUG_FLOW  //流量系統のデバッグ
 // #define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 #define DEBUG_SENS  //センサ系のデバッグ用
-#define DIAPHRAM_ENABLE //ダイアフラム制御の可否
+//#define DIAPHRAM_ENABLE //ダイアフラム制御の可否
+#define IG_HEATER //ニクロム線による点火
 
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
-#define r_a 0.6  //L/min
+#define r_a 0.7  //L/min
 #define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
@@ -51,12 +52,13 @@ const int sum_min = -5;
 ////////////////////////////////////
 
 //////////////時間定数//////////////
-#define IG_TIME 10 //イグナイタ点火時間
-#define IG_TIME_DELAY 10 //イグナイタの点火遅れ時間(先に燃料噴射)
-#define IG_REPEAT 3   //イグナイタ動作の繰り返し回数
+#define IG_TIME 2 //イグナイタ点火時間
+#define IG_TIME_DELAY 5 //イグナイタの点火遅れ時間(先に燃料噴射)
+#define IG_REPEAT 10  //イグナイタ動作の繰り返し回数
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
+#define HEATER_TIME 80
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
@@ -75,7 +77,7 @@ void setup(){
   Serial2.begin(115200);  //LoRaとの通信開始
   Serial2.println("MegaFire start!");
   while(Serial2.read() != '\n');
-  Serial.println("LoRa is Rady");
+  Serial.println("LoRa is Lady");
   Wire.begin();          //I2C通信開始
   setupBME280();
   SDsetup();
@@ -128,8 +130,11 @@ void TIME_Interrupt(void){
     Flow_data[1] = 0;
     Flow_data[2] = 0;
   }
-  
+  #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
+  #else
+  IG_heater();
+  #endif
 
   #ifdef DIAPHRAM_ENABLE
     sei();

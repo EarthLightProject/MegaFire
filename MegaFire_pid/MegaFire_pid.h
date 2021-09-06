@@ -43,7 +43,7 @@ float Temp = 0.0;
 float Humidity = 0.0;
 float Pressure = 0.0;
 float Flow_data[3]={0};
-int timecount=0, IG_count=0;
+int16_t timecount=0, IG_count=0;
 uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
@@ -96,6 +96,9 @@ void pinSetup(){    //IOピンの設定
   pinMode(Thermocouple_PIN,INPUT);
   pinMode(LoRa_RESET,OUTPUT);
   pinMode(RST_mega,OUTPUT);
+  pinMode(SW1,INPUT);
+  pinMode(SW2,INPUT);
+  pinMode(SW3,INPUT);
   digitalWrite(LoRa_RESET,HIGH);
   digitalWrite(RST_mega,LOW);
   //pinMode(GNSS_RST,OUTPUT);
@@ -206,9 +209,17 @@ void IG_Get(){
       #endif
       if(RECEVE_Str.compareTo("REIG\r\n") == 0){
         IG_repeat = IG_REPEAT;
-        Flow_flag = !Flow_flag;
-        IG_count = IG_TIME;
         delay_count = IG_TIME_DELAY;
+        #ifndef IG_HEATER
+        IG_count = IG_TIME;
+        Flow_flag = !Flow_flag;
+        #else
+        if(Flow_flag==1) {
+          Flow_flag=0;
+          delay_count = 1;
+        }
+        IG_count = HEATER_TIME;
+        #endif
         #ifdef DEBUG_SENS
         Serial.println("get REIG");
         #endif
@@ -233,9 +244,17 @@ void IG_Get_LoRa(){
       #endif
       if(RECEVE_Str_LoRa.compareTo("REIG\r\n") == 0){
         IG_repeat = IG_REPEAT;
-        Flow_flag = !Flow_flag;
-        IG_count = IG_TIME;
         delay_count = IG_TIME_DELAY;
+        #ifndef IG_HEATER
+        IG_count = IG_TIME;
+        Flow_flag = !Flow_flag;
+        #else
+        if(Flow_flag==1) {
+          Flow_flag=0;
+          delay_count = 1;
+        }
+        IG_count = HEATER_TIME;
+        #endif
         #ifdef DEBUG_SENS
         Serial.println("get REIG");
         #endif
@@ -260,6 +279,24 @@ void IG_Pulse(){
       delay_count = IG_TIME_DELAY;
       analogWrite(IGPWM,0);
       }
+  }
+  else analogWrite(IGPWM,0);
+}
+
+void IG_heater(){
+  if(IG_repeat != 0){
+    if(IG_count > 0){
+      analogWrite(IGPWM,210);
+      if(delay_count != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
+        Flow_flag=1;
+      }
+      IG_count--;
+      
+    }
+    else {
+      IG_repeat = 0;
+      analogWrite(IGPWM,0);
+    }
   }
   else analogWrite(IGPWM,0);
 }
