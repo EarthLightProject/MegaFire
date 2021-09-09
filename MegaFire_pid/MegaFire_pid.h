@@ -5,9 +5,7 @@
 #include <SparkFunBME280.h>
 #include <avr/wdt.h>
 #include <avr/io.h>
-#ifdef DIAPHRAM_ENABLE
 #include <Servo.h>
-#endif
 
 ////ピン番号の定義////
 #define GNSS_RST 22
@@ -42,7 +40,7 @@
 float Temp = 0.0;
 float Humidity = 0.0;
 float Pressure = 0.0;
-float Flow_data[3]={0};
+float Flow_data[3]={0} , PWM_data[3]={0};
 int16_t timecount=0, IG_count=0;
 uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
@@ -58,9 +56,7 @@ String RECEVE_Str_LoRa;
 /////////////クラスの宣言/////////////
 BME280 bme280;
 File myFile;
-#ifdef DIAPHRAM_ENABLE
 Servo Servo_Diaphragm;
-#endif
 ///////////////////////////////////
 
 ////////////関数の宣言//////////////
@@ -192,6 +188,12 @@ void Create_Buffer_Flow(){
   Buffer_Flow.concat(Flow_data[1]);
   Buffer_Flow.concat(",");
   Buffer_Flow.concat(Flow_data[2]);
+  Buffer_Flow.concat(",");
+  Buffer_Flow.concat(PWM_data[0]);
+  Buffer_Flow.concat(","); 
+  Buffer_Flow.concat(PWM_data[1]);
+  Buffer_Flow.concat(",");
+  Buffer_Flow.concat(PWM_data[2]);
 }
 //////////////////////////////////////////////////////////////////
 

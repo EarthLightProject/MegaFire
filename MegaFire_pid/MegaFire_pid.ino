@@ -78,12 +78,11 @@ void setup(){
   Serial2.println("MegaFire start!");
   while(Serial2.read() != '\n');
   Serial.println("LoRa is Lady");
-  Wire.begin();          //I2C通信開始
-  setupBME280();
+//  Wire.begin();          //I2C通信開始
+//  setupBME280();
   SDsetup();
-  #ifdef DIAPHRAM_ENABLE
   Servo_Diaphragm.attach(Servo_PWM);
-  #endif
+  Servo_Diaphragm.write(93);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとにTIME_Interruptを呼び出す
   MsTimer2::start();
 }
@@ -93,12 +92,17 @@ void loop(){
     while(digitalRead(SW1)==1);
     SD_flag = !SD_flag;
     Serial.print("Log ");
-    Serial.print(SD_flag);
+    if(SD_flag) Serial.print("start");
+    else Serial.print("stop");
     Serial.println();
+    Serial2.print("Log ");
+    if(SD_flag) Serial2.print("start");
+    else Serial2.print("stop");
+    Serial2.println();
   }
   if(SD_flag==1){
-    BME280_data();
-    Create_Buffer_BME280();
+//    BME280_data();
+//    Create_Buffer_BME280();
     SDWriteData();
     myFile.println();
     myFile.flush(); 
@@ -126,7 +130,9 @@ void TIME_Interrupt(void){
     sum_o = 0;
     sum_a = 0;
     sum_g = 0;
-    Buffer_Flow = "0,0,0";
+    Flow_data[0] = 0;
+    Flow_data[1] = 0;
+    Flow_data[2] = 0;
   }
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
@@ -194,6 +200,7 @@ void O2_Control(){
   /* 入力 */
   O2PWMset = u; //O2 PWM
   Flow_data[0] = y;
+  PWM_data[0] = u;
   #ifdef DEBUG_FLOW
   Serial.print("O2=");
   Serial.print(y);
@@ -221,6 +228,7 @@ void Air_Control(){
   /* 入力 */
   AirPWMset = u;//Air PWM
   Flow_data[1] = y;
+  PWM_data[1] = u;
   #ifdef DEBUG_FLOW
   Serial.print("Air=");
   Serial.print(y);
@@ -248,6 +256,7 @@ void LPG_Control(){
   /* 入力 */
   LPGPWMset = u;//LPG PWM
   Flow_data[2] = y;
+  PWM_data[2] = u;
   #ifdef DEBUG_FLOW
   Serial.print("LPG=");
   Serial.print(y);
