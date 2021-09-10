@@ -78,8 +78,8 @@ void setup(){
   Serial2.println("MegaFire start!");
   while(Serial2.read() != '\n');
   Serial.println("LoRa is Lady");
-//  Wire.begin();          //I2C通信開始
-//  setupBME280();
+  Wire.begin();          //I2C通信開始
+  setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   Servo_Diaphragm.write(93);
@@ -101,8 +101,8 @@ void loop(){
     Serial2.println();
   }
   if(SD_flag==1){
-//    BME280_data();
-//    Create_Buffer_BME280();
+    BME280_data();
+    Create_Buffer_BME280();
     SDWriteData();
     myFile.println();
     myFile.flush(); 
@@ -133,6 +133,9 @@ void TIME_Interrupt(void){
     Flow_data[0] = 0;
     Flow_data[1] = 0;
     Flow_data[2] = 0;
+    PWM_data[0]=0;
+    PWM_data[1]=0;
+    PWM_data[2]=0;
   }
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
