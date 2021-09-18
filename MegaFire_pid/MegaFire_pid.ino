@@ -9,7 +9,7 @@
 //各制御の目標値
 #define r_o 0.08  //L/min
 #define r_a 0.7  //L/min
-#define r_g 0.08  //L/min
+#define r_g 0.1  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
@@ -19,7 +19,7 @@ const float Kd_o = 0;
 
 //空気のPIDゲイン
 const float Kp_a = 0;
-const float Ki_a = 3000;
+const float Ki_a = 2700;
 const float Kd_a = 0;
 
 //LPGのPIDゲイン
