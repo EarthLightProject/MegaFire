@@ -4,22 +4,23 @@
 #define DEBUG_SENS  //センサ系のデバッグ用
 //#define DIAPHRAM_ENABLE //ダイアフラム制御の可否
 #define IG_HEATER //ニクロム線による点火
+#define BME_OUT_EN //外側BMEを有効化
 
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
 #define r_a 0.7  //L/min
-#define r_g 0.1  //L/min
+#define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
 const float Kp_o = 1;
-const float Ki_o = 3500;
+const float Ki_o = 3000;
 const float Kd_o = 0;
 
 //空気のPIDゲイン
 const float Kp_a = 0;
-const float Ki_a = 2700;
+const float Ki_a = 3000;
 const float Kd_a = 0;
 
 //LPGのPIDゲイン
@@ -28,7 +29,7 @@ const float Ki_g = 3000;
 const float Kd_g = 0;
 
 //PWMのオフセット
-const int OffSet_o = 1700;
+const int OffSet_o = 1800;
 const int OffSet_a = 1950;
 const int OffSet_g = 1700;
 
@@ -103,6 +104,9 @@ void loop(){
   if(SD_flag==1){
     BME280_data();
     Create_Buffer_BME280();
+    #ifdef BME_OUT_EN
+    Create_Buffer_BME280_OUT();
+    #endif
     SDWriteData();
     myFile.println();
     myFile.flush(); 
@@ -136,6 +140,7 @@ void TIME_Interrupt(void){
     PWM_data[0]=0;
     PWM_data[1]=0;
     PWM_data[2]=0;
+    if(SD_flag == 1) Create_Buffer_Flow(); //ロギング中ならば流量を保存
   }
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作

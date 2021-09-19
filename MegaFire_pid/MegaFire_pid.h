@@ -40,6 +40,11 @@
 float Temp = 0.0;
 float Humidity = 0.0;
 float Pressure = 0.0;
+#ifdef BME_OUT_EN
+float Temp_out = 0.0;
+float Humidity_out = 0.0;
+float Pressure_out = 0.0;
+#endif
 float Flow_data[3]={0} , PWM_data[3]={0};
 int16_t timecount=0, IG_count=0;
 uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;
@@ -48,6 +53,9 @@ double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
 double etmp_g = 0, sum_g = 0;
 String Buffer_BME280;
+#ifdef BME_OUT_EN
+String Buffer_BME280_OUT;
+#endif
 String Buffer_Flow;
 String RECEVE_Str;
 String RECEVE_Str_LoRa;
@@ -55,6 +63,9 @@ String RECEVE_Str_LoRa;
 
 /////////////クラスの宣言/////////////
 BME280 bme280;
+#ifdef BME_OUT_EN
+BME280 bme280_out;
+#endif
 File myFile;
 Servo Servo_Diaphragm;
 ///////////////////////////////////
@@ -126,26 +137,19 @@ void SDWriteData(void) {
     myFile.print(millis());
     myFile.write(',');
     myFile.print(Buffer_BME280);
+//    myFile.write(',');
+    #ifdef BME_OUT_EN
+    myFile.print(Buffer_BME280_OUT);
     myFile.write(',');
+    #endif
     myFile.print(Buffer_Flow);
+    
   }
 }
 //////////////////////////////////////////////////////////////////////
 
 ///////////////////////////BME280////////////////////////////////
 void setupBME280(void) {
-  bme280.setI2CAddress(0x77);
-  if (bme280.beginI2C()) {
-    Wire.beginTransmission(0x77);
-    Wire.write(0xf4);
-    Wire.write(0x93);
-    Wire.endTransmission();
-    #ifdef DEBUG_SENS
-    Serial.println("BME280 adress 0x77 OK");
-    #endif
-    return;
-    delay(50);
-  }
   bme280.setI2CAddress(0x76);
   if (bme280.beginI2C()) {
     Wire.beginTransmission(0x76);
@@ -153,7 +157,21 @@ void setupBME280(void) {
     Wire.write(0x93);
     Wire.endTransmission();
     #ifdef DEBUG_SENS
-    Serial.println("BME280 adress 0x76 OK");
+    Serial.println("BME280 adress 0x76(in) OK");
+    #endif
+    #ifndef BME_OUT_EN
+    return;
+    #endif
+    delay(50);
+  }
+  bme280_out.setI2CAddress(0x77);
+  if (bme280_out.beginI2C()) {
+    Wire.beginTransmission(0x77);
+    Wire.write(0xf4);
+    Wire.write(0x93);
+    Wire.endTransmission();
+    #ifdef DEBUG_SENS
+    Serial.println("BME280 adress 0x77(out) OK");
     #endif
     return;
   }
@@ -166,6 +184,11 @@ void BME280_data(void) {
   Temp = bme280.readTempC(); //°C
   Humidity = bme280.readFloatHumidity(); //%
   Pressure = bme280.readFloatPressure() / 100; //hPa
+  #ifdef BME_OUT_EN
+  Temp_out = bme280_out.readTempC(); //°C
+  Humidity_out = bme280_out.readFloatHumidity(); //%
+  Pressure_out = bme280_out.readFloatPressure() / 100; //hPa
+  #endif
 }
 
 //////////////////////////////////////////////////////////////////
@@ -179,6 +202,15 @@ void Create_Buffer_BME280(void){
   Buffer_BME280.concat(",");
   Buffer_BME280.concat(Pressure);
   Buffer_BME280.concat(",");
+}
+
+void Create_Buffer_BME280_OUT(void){
+  Buffer_BME280_OUT.remove(0);
+  Buffer_BME280_OUT.concat(Temp_out);
+  Buffer_BME280_OUT.concat(","); 
+  Buffer_BME280_OUT.concat(Humidity_out);
+  Buffer_BME280_OUT.concat(",");
+  Buffer_BME280_OUT.concat(Pressure_out);
 }
 
 void Create_Buffer_Flow(){
@@ -288,7 +320,7 @@ void IG_Pulse(){
 void IG_heater(){
   if(IG_repeat != 0){
     if(IG_count > 0){
-      analogWrite(IGPWM,210);
+      analogWrite(IGPWM,230);
       if(delay_count != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
         Flow_flag=1;
       }
