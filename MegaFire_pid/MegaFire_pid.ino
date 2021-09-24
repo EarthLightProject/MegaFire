@@ -25,7 +25,7 @@ const float Kd_a = 0;
 
 //LPGのPIDゲイン
 const float Kp_g = 0;
-const float Ki_g = 3000;
+const float Ki_g = 1000;
 const float Kd_g = 0;
 
 //PWMのオフセット
@@ -59,7 +59,7 @@ const int sum_min = -5;
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
-#define HEATER_TIME 80
+#define HEATER_TIME 120
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
@@ -77,7 +77,7 @@ void setup(){
   wdt_reset();
   Serial2.begin(115200);  //LoRaとの通信開始
   Serial2.println("MegaFire start!");
-  while(Serial2.read() != '\n');
+//  while(Serial2.read() != '\n');
   Serial.println("LoRa is Lady");
   Wire.begin();          //I2C通信開始
   setupBME280();
