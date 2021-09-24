@@ -273,10 +273,6 @@ void IG_Get_LoRa(){
       RECEVE_Str_LoRa.concat(receve_tmp);
   }
   if(receve_tmp == '\n'){
-      #ifdef DEBUG_SENS
-      Serial.println("available");
-      Serial.println(RECEVE_Str);
-      #endif
       if(RECEVE_Str_LoRa.compareTo("REIG\r\n") == 0){
         IG_repeat = IG_REPEAT;
         delay_count = IG_TIME_DELAY;
@@ -291,11 +287,22 @@ void IG_Get_LoRa(){
         IG_count = HEATER_TIME;
         #endif
         #ifdef DEBUG_SENS
-        Serial.println("get REIG");
+        Serial2.println("Get REIG");
         #endif
       }
       else if(RECEVE_Str_LoRa.compareTo("RESET\r\n") == 0){
         digitalWrite(RST_mega,HIGH);
+        Serial2.println("Get RESET");
+      }
+      else if(RECEVE_Str_LoRa.compareTo("LOG\r\n") == 0){
+          SD_flag = !SD_flag;
+          Serial2.print("Log ");
+          if(SD_flag) Serial2.print("start");
+          else Serial2.print("stop");
+          Serial2.println();
+      }
+      else if(RECEVE_Str_LoRa.compareTo("STATUS\r\n") == 0){
+         
       }
       RECEVE_Str_LoRa.remove(0);
   }

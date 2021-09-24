@@ -25,13 +25,13 @@ const float Kd_a = 0;
 
 //LPGのPIDゲイン
 const float Kp_g = 0;
-const float Ki_g = 1500;
+const float Ki_g = 3000;
 const float Kd_g = 0;
 
 //PWMのオフセット
 const int OffSet_o = 1800;
 const int OffSet_a = 1950;
-const int OffSet_g = 1700;
+const int OffSet_g = 1600;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
@@ -59,7 +59,7 @@ const int sum_min = -5;
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
-#define HEATER_TIME 80
+#define HEATER_TIME 80  //ニクロムの導通時間　半分の時間から燃料を流す
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
