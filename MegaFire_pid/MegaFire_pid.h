@@ -45,7 +45,8 @@ float Temp_out = 0.0;
 float Humidity_out = 0.0;
 float Pressure_out = 0.0;
 #endif
-float Flow_data[3]={0} , PWM_data[3]={0};
+float Flow_data[3]={0};
+uint16_t PWM_data[3]={0};
 int16_t timecount=0, IG_count=0;
 uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
@@ -320,7 +321,7 @@ void IG_Pulse(){
 void IG_heater(){
   if(IG_repeat != 0){
     if(IG_count > 0){
-      analogWrite(IGPWM,230);
+      analogWrite(IGPWM,255);
       if(delay_count != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
         Flow_flag=1;
       }
