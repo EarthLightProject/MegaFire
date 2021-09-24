@@ -48,7 +48,7 @@ float Pressure_out = 0.0;
 float Flow_data[3]={0};
 uint16_t PWM_data[3]={0};
 int16_t timecount=0, IG_count=0;
-uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0;
+uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0 , NNN=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
@@ -302,7 +302,16 @@ void IG_Get_LoRa(){
           Serial2.println();
       }
       else if(RECEVE_Str_LoRa.compareTo("STATUS\r\n") == 0){
-         
+         Serial2.print("SD=");
+         Serial2.write(SD_flag);
+         Serial2.print(", flow=");
+         Serial2.write(Flow_flag);
+         Serial2.print(", Tc=");
+         Serial2.write(analogRead(Thermocouple_PIN));
+         Serial2.println();
+      }
+      else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
+         NNN = !NNN;
       }
       RECEVE_Str_LoRa.remove(0);
   }
@@ -340,6 +349,7 @@ void IG_heater(){
       analogWrite(IGPWM,0);
     }
   }
+  else if(NNN != 0) analogWrite(IGPWM,230);
   else analogWrite(IGPWM,0);
 }
 //////////////////////////////////////////////////////////////////
