@@ -22,9 +22,7 @@
 #define Thermocouple_PIN A4
 #define LoRa_RESET 24
 #define RST_mega 7
-#define SW1 8
-#define SW2 9
-#define SW3 10
+#define SW1 10
 ////////////////////
 
 ////Timer3のDuty設定用レジスタ名////
