@@ -206,6 +206,8 @@ void O2_Control(){
   etmp_o = e; //1ステップ前の誤差を更新
   sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
   /* 上下限設定 */
+  if(sum_o > sum_max) sum_o = sum_max;
+  else if(sum_o < sum_min) sum_o = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -234,6 +236,8 @@ void Air_Control(){
   etmp_a = e;
   sum_a += (Ts * 1e-3) * e;
   /* 上下限設定 */
+  if(sum_a > sum_max) sum_a = sum_max;
+  else if(sum_a < sum_min) sum_a = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
@@ -262,6 +266,8 @@ void LPG_Control(){
   etmp_g = e;
   sum_g += (Ts * 1e-3) * e;
   /* 上下限設定 */
+  if(sum_g > sum_max) sum_g = sum_max;
+  else if(sum_g < sum_min) sum_g = sum_min;
   if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
