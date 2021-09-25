@@ -79,8 +79,8 @@ void setup(){
   Serial2.println("MegaFire start!");
   while(Serial2.read() != '\n');
   Serial.println("LoRa is Lady");
-  Wire.begin();          //I2C通信開始
-  setupBME280();
+  //Wire.begin();          //I2C通信開始
+  //setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   Servo_Diaphragm.write(93);

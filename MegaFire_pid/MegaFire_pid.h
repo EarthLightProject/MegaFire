@@ -103,8 +103,6 @@ void pinSetup(){    //IOピンの設定
   pinMode(LoRa_RESET,OUTPUT);
   pinMode(RST_mega,OUTPUT);
   pinMode(SW1,INPUT);
-  pinMode(SW2,INPUT);
-  pinMode(SW3,INPUT);
   digitalWrite(LoRa_RESET,HIGH);
   digitalWrite(RST_mega,LOW);
   //pinMode(GNSS_RST,OUTPUT);
@@ -301,11 +299,11 @@ void IG_Get_LoRa(){
       }
       else if(RECEVE_Str_LoRa.compareTo("STATUS\r\n") == 0){
          Serial2.print("SD=");
-         Serial2.write(SD_flag);
+         Serial2.print(SD_flag);
          Serial2.print(", flow=");
-         Serial2.write(Flow_flag);
+         Serial2.print(Flow_flag);
          Serial2.print(", Tc=");
-         Serial2.write(analogRead(Thermocouple_PIN));
+         Serial2.print(analogRead(Thermocouple_PIN));
          Serial2.println();
       }
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
