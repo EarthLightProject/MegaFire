@@ -297,18 +297,20 @@ void IG_Get_LoRa(){
           else Serial2.print("stop");
           Serial2.println();
       }
-      else if(RECEVE_Str_LoRa.compareTo("STATUS\r\n") == 0){
+      else if(RECEVE_Str_LoRa.compareTo("STA\r\n") == 0){
          Serial2.print("SD=");
          Serial2.print(SD_flag);
-         Serial2.print(", flow=");
+         Serial2.print(",flow=");
          Serial2.print(Flow_flag);
-         Serial2.print(", Tc=");
+         Serial2.print(",Tc=");
          Serial2.print(analogRead(Thermocouple_PIN));
          Serial2.println();
       }
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
          NNN = !NNN;
+         Serial2.println("Get");
       }
+      else if(RECEVE_Str_LoRa.compareTo("OK\r\n") != 0) Serial2.println("?");
       RECEVE_Str_LoRa.remove(0);
   }
 }

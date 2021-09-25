@@ -9,8 +9,8 @@
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
-#define r_a 0.7  //L/min
-#define r_g 0.1  //L/min
+#define r_a 0.4  //L/min
+#define r_g 0.10  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
@@ -31,7 +31,7 @@ const float Kd_g = 0;
 //PWMのオフセット
 const int OffSet_o = 1800;
 const int OffSet_a = 1950;
-const int OffSet_g = 1600;
+const int OffSet_g = 1500;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
@@ -59,7 +59,7 @@ const int sum_min = -5;
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
-#define HEATER_TIME 80  //ニクロムの導通時間　半分の時間から燃料を流す
+#define HEATER_TIME 100  //ニクロムの導通時間　半分の時間から燃料を流す
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
@@ -79,8 +79,8 @@ void setup(){
   Serial2.println("MegaFire start!");
   while(Serial2.read() != '\n');
   Serial.println("LoRa is Lady");
-  //Wire.begin();          //I2C通信開始
-  //setupBME280();
+  Wire.begin();          //I2C通信開始
+  setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   Servo_Diaphragm.write(93);
@@ -115,6 +115,7 @@ void loop(){
   }
   IG_Get();
   IG_Get_LoRa();
+//  Serial.println(analogRead(Thermocouple_PIN));
 }
 
 ///////////////////////サブ関数////////////////////////////
