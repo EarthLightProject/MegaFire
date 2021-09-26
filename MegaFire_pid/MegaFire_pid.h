@@ -116,8 +116,10 @@ void SDsetup(){
   #endif
   if (!SD.begin(CS)) {
     Serial.println("initialization failed!");
+    Serial2.println("NO SD");
     //while (1);  //ウォッチドッグに引っかかって再起動する
   }
+  else Serial2.println("SD OK");
   myFile = SD.open(FILE_NAME, FILE_WRITE);
   myFile.write("Time(ms),");
   myFile.write("Temp_Out,Humidity_Out,PressureOut,Temp_In,Humidity_In,Pressure_In,");
@@ -156,6 +158,7 @@ void setupBME280(void) {
     #ifdef DEBUG_SENS
     Serial.println("BME280 adress 0x76(in) OK");
     #endif
+    Serial2.print("IN OK,");
     #ifndef BME_OUT_EN
     return;
     #endif
@@ -170,11 +173,13 @@ void setupBME280(void) {
     #ifdef DEBUG_SENS
     Serial.println("BME280 adress 0x77(out) OK");
     #endif
+    Serial2.print("OUT OK,");
     return;
   }
   #ifdef DEBUG_SENS
   Serial.println("Sensor connect failed");
   #endif
+  Serial2.print("NO BME,");
 }
 
 void BME280_data(void) {
@@ -304,7 +309,22 @@ void IG_Get_LoRa(){
          Serial2.print(Flow_flag);
          Serial2.print(",Tc=");
          Serial2.print(analogRead(Thermocouple_PIN));
+         if(NNN != 0)Serial2.print(", EL");
          Serial2.println();
+      }
+      else if(RECEVE_Str_LoRa.compareTo("BME\r\n") == 0){
+        BME280_data();
+        Create_Buffer_BME280();
+        Serial2.println(Buffer_BME280);
+      }
+      else if(RECEVE_Str_LoRa.compareTo("BMEOUT\r\n") == 0){
+        BME280_data();
+        Create_Buffer_BME280_OUT();
+        Serial2.println(Buffer_BME280_OUT);
+      }
+      else if(RECEVE_Str_LoRa.compareTo("FLOW\r\n") == 0){
+        if(SD_flag != 0) Serial2.println(Buffer_Flow);
+        else Serial2.println("No Data");
       }
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
          NNN = !NNN;
