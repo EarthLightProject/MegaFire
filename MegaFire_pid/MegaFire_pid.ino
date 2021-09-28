@@ -10,7 +10,7 @@
 //各制御の目標値
 #define r_o 0.08  //L/min
 #define r_a 0.4  //L/min
-#define r_g 0.10  //L/min
+#define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
 //O2のPIDゲイン
@@ -77,8 +77,8 @@ void setup(){
   wdt_reset();
   Serial2.begin(115200);  //LoRaとの通信開始
   Serial2.println("MegaFire start!");
-  while(Serial2.read() != '\n');
-  Serial.println("LoRa is Lady");
+  //while(Serial2.read() != '\n');
+  Serial.println("LoRa is Ready");
   Wire.begin();          //I2C通信開始
   setupBME280();
   SDsetup();
@@ -93,12 +93,16 @@ void loop(){
     while(digitalRead(SW1)==1);
     SD_flag = !SD_flag;
     Serial.print("Log ");
-    if(SD_flag) Serial.print("start");
-    else Serial.print("stop");
-    Serial.println();
     Serial2.print("Log ");
-    if(SD_flag) Serial2.print("start");
-    else Serial2.print("stop");
+    if(SD_flag){
+      Serial.print("start");
+      Serial2.print("start");
+    }
+    else {
+      Serial.print("stop");
+      Serial2.print("stop");
+    }
+    Serial.println();
     Serial2.println();
   }
   if(SD_flag==1){
@@ -107,9 +111,10 @@ void loop(){
     #ifdef BME_OUT_EN
     Create_Buffer_BME280_OUT();
     #endif
+    Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
     SDWriteData();
     myFile.write(',');
-    myFile.print(analogRead(Thermocouple_PIN));
+    myFile.print(Tc_val);
     myFile.println();
     myFile.flush(); 
   }
@@ -121,30 +126,30 @@ void loop(){
 ///////////////////////サブ関数////////////////////////////
 void TIME_Interrupt(void){
   wdt_reset();
-  timecount++;
-  if(timecount>(int)(1000/Ts)) time_flag=1;
+  //timecount++;
+  //if(timecount>(int)(1000/Ts)) time_flag=1;
   
   if(Flow_flag==1){
-    O2_Control();
+    //O2_Control();
     Air_Control();
     LPG_Control();
-    if(SD_flag == 1) Create_Buffer_Flow(); //ロギング中ならば流量を保存
   }
   else {
-    O2PWMset=0;
+    //O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
-    sum_o = 0;
+    //sum_o = 0;
     sum_a = 0;
     sum_g = 0;
-    Flow_data[0] = 0;
+    //Flow_data[0] = 0;
     Flow_data[1] = 0;
     Flow_data[2] = 0;
-    PWM_data[0]=0;
+    //PWM_data[0]=0;
     PWM_data[1]=0;
     PWM_data[2]=0;
-    if(SD_flag == 1) Create_Buffer_Flow(); //ロギング中ならば流量を保存
   }
+  if(SD_flag == 1) Create_Buffer_Flow(); //ロギング中ならば流量を保存
+  
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
   #else
@@ -158,12 +163,6 @@ void TIME_Interrupt(void){
   #endif
 }
 
-void Serial_print(void){
-  Serial.print(Buffer_BME280);
-  #ifdef DEBUG_FLOW_LORA
-  Serial.println(Buffer_Flow);
-  #endif
-}
 ///////////////////////////////////////////////////////////
 
 //////////////////////PID制御関数///////////////////////////

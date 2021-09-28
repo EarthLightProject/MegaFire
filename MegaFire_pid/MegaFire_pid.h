@@ -44,7 +44,7 @@ float Humidity_out = 0.0;
 float Pressure_out = 0.0;
 #endif
 float Flow_data[3]={0};
-uint16_t PWM_data[3]={0};
+uint16_t PWM_data[3]={0} , Tc_val=0;
 int16_t timecount=0, IG_count=0;
 uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0 , NNN=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
@@ -122,9 +122,9 @@ void SDsetup(){
   else Serial2.println("SD OK");
   myFile = SD.open(FILE_NAME, FILE_WRITE);
   myFile.write("Time(ms),");
-  myFile.write("Temp_Out,Humidity_Out,PressureOut,Temp_In,Humidity_In,Pressure_In,");
-  myFile.write("Latitude,Longitude,Height,");
-  myFile.println("Hour,Min,Sec");
+  myFile.write("Temp_IN,Humidity_IN,Pressure_IN,Temp_Out,Humidity_Out,Pressure_Out,");
+  myFile.write("LPG_y,Air_y,LPG_u,Air_u");
+  myFile.println(",Thermo");
   myFile.flush(); 
   #ifdef DEBUG_SENS
   Serial.println("initialization done.");
@@ -217,14 +217,14 @@ void Create_Buffer_BME280_OUT(void){
 
 void Create_Buffer_Flow(){
   Buffer_Flow.remove(0);
-  Buffer_Flow.concat(Flow_data[0]);
-  Buffer_Flow.concat(","); 
+  /*Buffer_Flow.concat(Flow_data[0]);
+  Buffer_Flow.concat(","); */
   Buffer_Flow.concat(Flow_data[1]);
   Buffer_Flow.concat(",");
   Buffer_Flow.concat(Flow_data[2]);
   Buffer_Flow.concat(",");
-  Buffer_Flow.concat(PWM_data[0]);
-  Buffer_Flow.concat(","); 
+  /*Buffer_Flow.concat(PWM_data[0]);
+  Buffer_Flow.concat(","); */
   Buffer_Flow.concat(PWM_data[1]);
   Buffer_Flow.concat(",");
   Buffer_Flow.concat(PWM_data[2]);
@@ -260,9 +260,6 @@ void IG_Get(){
         Serial.println("get REIG");
         #endif
       }
-      else if(RECEVE_Str.compareTo("RESET\r\n") == 0){
-        digitalWrite(RST_mega,HIGH);
-      }
       RECEVE_Str.remove(0);
    }
 }
@@ -292,8 +289,9 @@ void IG_Get_LoRa(){
         #endif
       }
       else if(RECEVE_Str_LoRa.compareTo("RESET\r\n") == 0){
-        digitalWrite(RST_mega,HIGH);
         Serial2.println("Get RESET");
+        digitalWrite(RST_mega,HIGH);
+        
       }
       else if(RECEVE_Str_LoRa.compareTo("LOG\r\n") == 0){
           SD_flag = !SD_flag;
@@ -308,7 +306,7 @@ void IG_Get_LoRa(){
          Serial2.print(",flow=");
          Serial2.print(Flow_flag);
          Serial2.print(",Tc=");
-         Serial2.print(analogRead(Thermocouple_PIN));
+         Serial2.print(Tc_val);
          if(NNN != 0)Serial2.print(", EL");
          Serial2.println();
       }
