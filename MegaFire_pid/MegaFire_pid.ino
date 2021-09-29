@@ -79,11 +79,12 @@ void setup(){
   Serial2.println("MegaFire start!");
   //while(Serial2.read() != '\n');
   Serial.println("LoRa is Ready");
+  delay(1000);
   Wire.begin();          //I2C通信開始
   setupBME280();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
-  Servo_Diaphragm.write(93);
+  Servo_Diaphragm.write(78);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとにTIME_Interruptを呼び出す
   MsTimer2::start();
 }
@@ -111,7 +112,6 @@ void loop(){
     #ifdef BME_OUT_EN
     Create_Buffer_BME280_OUT();
     #endif
-    Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
     SDWriteData();
     myFile.write(',');
     myFile.print(Tc_val);
@@ -138,6 +138,7 @@ void TIME_Interrupt(void){
     //O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
+    Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
     //sum_o = 0;
     sum_a = 0;
     sum_g = 0;
@@ -148,7 +149,8 @@ void TIME_Interrupt(void){
     PWM_data[1]=0;
     PWM_data[2]=0;
   }
-  if(SD_flag == 1) Create_Buffer_Flow(); //ロギング中ならば流量を保存
+//  if(SD_flag == 1)
+  Create_Buffer_Flow(); //流量を保存
   
   #ifndef IG_HEATER
   IG_Pulse(); //イグナイタの動作
