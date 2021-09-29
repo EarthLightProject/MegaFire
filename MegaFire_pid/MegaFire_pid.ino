@@ -128,7 +128,7 @@ void TIME_Interrupt(void){
   wdt_reset();
   //timecount++;
   //if(timecount>(int)(1000/Ts)) time_flag=1;
-  
+  Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
   if(Flow_flag==1){
     //O2_Control();
     Air_Control();
@@ -138,7 +138,6 @@ void TIME_Interrupt(void){
     //O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
-    Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
     //sum_o = 0;
     sum_a = 0;
     sum_g = 0;
