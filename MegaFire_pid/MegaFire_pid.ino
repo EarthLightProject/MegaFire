@@ -9,7 +9,7 @@
 //////////制御定数定義/////////////
 //各制御の目標値
 #define r_o 0.08  //L/min
-#define r_a 0.4  //L/min
+#define r_a 0.7  //L/min
 #define r_g 0.08  //L/min
 #define r_d 1013.25; //気圧目標値hPa
 
@@ -31,7 +31,7 @@ const float Kd_g = 0;
 //PWMのオフセット
 const int OffSet_o = 1800;
 const int OffSet_a = 1950;
-const int OffSet_g = 1500;
+const int OffSet_g = 1600;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
