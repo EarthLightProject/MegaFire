@@ -6,6 +6,7 @@
 #include <avr/wdt.h>
 #include <avr/io.h>
 #include <Servo.h>
+#include <mcp_can.h>
 
 ////ピン番号の定義////
 #define GNSS_RST 22
@@ -46,7 +47,7 @@ float Pressure_out = 0.0;
 float Flow_data[3]={0};
 uint16_t PWM_data[3]={0} , Tc_val=0;
 int16_t timecount=0, IG_count=0;
-uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0 , NNN=0;
+uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0 ,LPG_EN=1 , NNN=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
@@ -303,8 +304,10 @@ void IG_Get_LoRa(){
       else if(RECEVE_Str_LoRa.compareTo("STA\r\n") == 0){
          Serial2.print("SD=");
          Serial2.print(SD_flag);
-         Serial2.print(",flow=");
+         Serial2.print(",Fl=");
          Serial2.print(Flow_flag);
+         Serial2.print(",L=");
+         Serial2.print(LPG_EN);
          Serial2.print(",Tc=");
          Serial2.print(Tc_val);
          if(NNN != 0)Serial2.print(", EL");
@@ -323,6 +326,11 @@ void IG_Get_LoRa(){
       else if(RECEVE_Str_LoRa.compareTo("FLOW\r\n") == 0){
         if(SD_flag != 0) Serial2.println(Buffer_Flow);
         else Serial2.println("No Data");
+      }
+       else if(RECEVE_Str_LoRa.compareTo("LPGCUT\r\n") == 0){
+        LPG_EN = !LPG_EN;
+        if(LPG_EN) Serial2.print("EN");
+        else Serial2.print("DISEN");
       }
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
          NNN = !NNN;

@@ -132,7 +132,8 @@ void TIME_Interrupt(void){
   if(Flow_flag==1){
     //O2_Control();
     Air_Control();
-    LPG_Control();
+    if(LPG_EN==1) LPG_Control();
+    else LPGPWMset=0;
   }
   else {
     //O2PWMset=0;
