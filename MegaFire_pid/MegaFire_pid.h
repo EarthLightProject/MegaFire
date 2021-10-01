@@ -123,7 +123,7 @@ void SDsetup(){
   myFile = SD.open(FILE_NAME, FILE_WRITE);
   myFile.write("Time(ms),");
   myFile.write("Temp_IN,Humidity_IN,Pressure_IN,Temp_Out,Humidity_Out,Pressure_Out,");
-  myFile.write("LPG_y,Air_y,LPG_u,Air_u");
+  myFile.write("Air_y,LPG_y,Air_u,LPG_u");
   myFile.println(",Thermo");
   myFile.flush(); 
   #ifdef DEBUG_SENS
