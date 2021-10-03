@@ -24,6 +24,7 @@
 #define LoRa_RESET 24
 #define RST_mega 7
 #define SW1 10
+#define CAN0_INT 40                   // Set INT to pin 40
 ////////////////////
 
 ////Timer3のDuty設定用レジスタ名////
@@ -59,6 +60,10 @@ String Buffer_BME280_OUT;
 String Buffer_Flow;
 String RECEVE_Str;
 String RECEVE_Str_LoRa;
+
+long unsigned int rxId;
+unsigned char len = 0;
+unsigned char rxBuf[8];
 ////////////////////////////////////
 
 /////////////クラスの宣言/////////////
@@ -68,6 +73,7 @@ BME280 bme280_out;
 #endif
 File myFile;
 Servo Servo_Diaphragm;
+MCP_CAN CAN0(42);  // Set CS to pin 42
 ///////////////////////////////////
 
 ////////////関数の宣言//////////////
@@ -78,6 +84,7 @@ void BME280_data(void);
 void SDsetup(void);
 void Serial_print(void);
 void SDWriteData(void);
+void CANsetup(void);
 void Diaphragm_control(void);
 void O2_Conrol();
 void Air_Control();
@@ -146,6 +153,27 @@ void SDWriteData(void) {
     
   }
 }
+//////////////////////////////////////////////////////////////////////
+
+///////////////////////////////CAN////////////////////////////////////
+void CANsetup(){
+  if(CAN0.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK)
+    Serial.println("MCP2515 Initialized Successfully!");
+  else
+    Serial.println("Error Initializing MCP2515...");
+  CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
+}
+
+void CAN_read(){
+  if(!digitalRead(CAN0_INT)) {                // If CAN0_INT pin is low, read receive buffer
+    CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
+    if(rxId == 0x110){  //生存確認
+      
+    }
+  }
+}
+
+
 //////////////////////////////////////////////////////////////////////
 
 ///////////////////////////BME280////////////////////////////////
@@ -292,7 +320,8 @@ void IG_Get_LoRa(){
       else if(RECEVE_Str_LoRa.compareTo("RESET\r\n") == 0){
         Serial2.println("Get RESET");
         digitalWrite(RST_mega,HIGH);
-        
+        delay(100);
+        digitalWrite(RST_mega,LOW);
       }
       else if(RECEVE_Str_LoRa.compareTo("LOG\r\n") == 0){
           SD_flag = !SD_flag;
@@ -373,7 +402,7 @@ void IG_heater(){
       analogWrite(IGPWM,0);
     }
   }
-  else if(NNN != 0) analogWrite(IGPWM,230);
+  else if(NNN != 0) analogWrite(IGPWM,240);
   else analogWrite(IGPWM,0);
 }
 //////////////////////////////////////////////////////////////////
