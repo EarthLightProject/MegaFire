@@ -28,7 +28,7 @@ const float Kd_g = 1;
 //PWMのオフセット
 const int OffSet_o = 2000;
 const int OffSet_a = 1950;
-const int OffSet_g = 2000;
+const int OffSet_g = 1750;
 
 //燃焼器内気圧のPID項
 #define Kp_d 0.05
