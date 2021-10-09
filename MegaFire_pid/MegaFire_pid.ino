@@ -2,21 +2,13 @@
 #define DEBUG_FLOW  //流量系統のデバッグ
 // #define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 #define DEBUG_SENS  //センサ系のデバッグ用
-//#define DIAPHRAM_ENABLE //ダイアフラム制御の可否
 #define IG_HEATER //ニクロム線による点火
 #define BME_OUT_EN //外側BMEを有効化
 
 //////////制御定数定義/////////////
 //各制御の目標値
-#define r_o 0.08  //L/min
-#define r_a 0.7  //L/min
-#define r_g 0.08  //L/min
-#define r_d 1013.25; //気圧目標値hPa
-
-//O2のPIDゲイン
-const float Kp_o = 1;
-const float Ki_o = 3000;
-const float Kd_o = 0;
+float r_a = 0.7;  //L/min
+float r_g = 0.08;  //L/min
 
 //空気のPIDゲイン
 const float Kp_a = 0;
@@ -29,27 +21,13 @@ const float Ki_g = 3000;
 const float Kd_g = 0;
 
 //PWMのオフセット
-const int OffSet_o = 1800;
-const int OffSet_a = 1950;
-const int OffSet_g = 1750;
-
-//燃焼器内気圧のPID項
-#define Kp_d 0.05
-#define Ki_d 0.03
-#define Kd_d 0.01
-#define OffSet_d (30)
+int OffSet_a = 1950;
+int OffSet_g = 1600;
 
 //流量系統の積分偏差の上限下限設定
 const int sum_max =  5;
 const int sum_min = -5;
 
-//ダイアフラム制御の積分偏差の上限下限
-#define sum_d_max 30
-#define sum_d_min -3000
-
-#define u_d_max 105
-#define u_d_min 37
-#define Servo_INVERT 127
 ////////////////////////////////////
 
 //////////////時間定数//////////////
@@ -60,6 +38,7 @@ const int sum_min = -5;
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
 #define HEATER_TIME 100  //ニクロムの導通時間　半分の時間から燃料を流す
+#define Press_IG_TIME 30 //気圧による予備点火の時間(s)
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
@@ -76,12 +55,13 @@ void setup(){
   delay(2000);
   wdt_reset();
   Serial2.begin(115200);  //LoRaとの通信開始
-  Serial2.println("MegaFire start!");
+  Serial2.println("MegaFire");
   //while(Serial2.read() != '\n');
   Serial.println("LoRa is Ready");
   delay(1000);
   Wire.begin();          //I2C通信開始
   setupBME280();
+  CANsetup();
   SDsetup();
   Servo_Diaphragm.attach(Servo_PWM);
   Servo_Diaphragm.write(78);
@@ -118,111 +98,43 @@ void loop(){
     myFile.println();
     myFile.flush(); 
   }
-  IG_Get();
+  CAN_read();
   IG_Get_LoRa();
-//  Serial.println(analogRead(Thermocouple_PIN));
 }
 
 ///////////////////////サブ関数////////////////////////////
 void TIME_Interrupt(void){
   wdt_reset();
-  //timecount++;
-  //if(timecount>(int)(1000/Ts)) time_flag=1;
+  if(time_flag == 1)   timecount++;
+  if(timecount>(int16_t)(Press_IG_TIME*1000/Ts)){
+    time_flag=0;
+    timecount=0;
+    REIG();
+  }
   Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
   if(Flow_flag==1){
-    //O2_Control();
     Air_Control();
     if(LPG_EN==1) LPG_Control();
     else LPGPWMset=0;
   }
   else {
-    //O2PWMset=0;
     AirPWMset=0;
     LPGPWMset=0;
-    //sum_o = 0;
     sum_a = 0;
     sum_g = 0;
-    //Flow_data[0] = 0;
     Flow_data[1] = 0;
     Flow_data[2] = 0;
-    //PWM_data[0]=0;
     PWM_data[1]=0;
     PWM_data[2]=0;
   }
-//  if(SD_flag == 1)
   Create_Buffer_Flow(); //流量を保存
-  
-  #ifndef IG_HEATER
-  IG_Pulse(); //イグナイタの動作
-  #else
   IG_heater();
-  #endif
 
-  #ifdef DIAPHRAM_ENABLE
-    sei();
-    BME280_data();
-    Diaphragm_control();
-  #endif
 }
 
 ///////////////////////////////////////////////////////////
 
 //////////////////////PID制御関数///////////////////////////
-#ifdef DIAPHRAM_ENABLE
-void Diaphragm_control(){
-  /* 変数設定 */
-  float u_d = 0;
-  float y_d = Pressure; //現在の圧力
-  float e_d = r_d - y_d; //誤差
-  /* 制御計算 */
-  // u_d = OffSet_d - (Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3)); //制御入力を計算
-  u_d = Kp_d * e_d + Ki_d * sum_d + Kd_d * (e_d - etmp_d) / (Ts * 1e-3); //制御入力を計算
-  etmp_d = e_d; //誤差を更新
-  sum_d += (Ts * 1e-3) * e_d; //誤差の総和を更新
-  /* 上下限設定 */
-  if(sum_d > sum_d_max) sum_d = sum_d_max;
-  else if(sum_d < sum_d_min) sum_d = sum_d_min;
-  if(u_d > u_d_max) u_d = u_d_max;
-  else if(u_d < u_d_min) u_d = u_d_min;
-  /* 入力 */
-  Servo_Diaphragm.write(u_d);
-  #ifdef DEBUG_PRESS
-  Serial.print(y_d);
-  Serial.write(',');
-  Serial.println(u_d);
-  #endif
-}
-#endif
-
-void O2_Control(){
-  /* 変数設定 */
-  double y = 0; //現在の流量
-  int16_t u = 0; //制御入力
-  y = analogRead(O2_flow);
-  y = y * 5 / 1024; //(V) 電圧値に戻す
-  y = 0.0192 * y * y + 0.0074 * y - 0.0217; //流量の線形フィッティング
-  double e = r_o - y; //誤差
-  /* 制御計算 */
-  u = int16_t(Kp_o * e + Ki_o * sum_o + Kd_o * (e - etmp_o) / (Ts * 1e-3) + OffSet_o); //制御入力を計算
-  etmp_o = e; //1ステップ前の誤差を更新
-  sum_o += (Ts * 1e-3) * e; //誤差の総和を更新
-  /* 上下限設定 */
-  if(sum_o > sum_max) sum_o = sum_max;
-  else if(sum_o < sum_min) sum_o = sum_min;
-  if(u > 4095) u = 4095;
-  else if(u < 0) u = 0;
-  /* 入力 */
-  O2PWMset = u; //O2 PWM
-  Flow_data[0] = y;
-  PWM_data[0] = u;
-  #ifdef DEBUG_FLOW
-  Serial.print("O2=");
-  Serial.print(y);
-  Serial.write(',');
-  Serial.print(u);
-  Serial.write(',');
-  #endif
-}
 
 void Air_Control(){
   /* 変数設定 */
@@ -269,7 +181,7 @@ void LPG_Control(){
   /* 上下限設定 */
   if(sum_g > sum_max) sum_g = sum_max;
   else if(sum_g < sum_min) sum_g = sum_min;
-  if(u > 4095) u = 4095;
+  if(u > 2000) u = 2000;
   else if(u < 0) u = 0;
   /* 入力 */
   LPGPWMset = u;//LPG PWM

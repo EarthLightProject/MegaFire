@@ -48,7 +48,7 @@ float Pressure_out = 0.0;
 float Flow_data[3]={0};
 uint16_t PWM_data[3]={0} , Tc_val=0;
 int16_t timecount=0, IG_count=0;
-uint8_t IG_repeat=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , delay_count=0 , SD_flag=0 ,LPG_EN=1 , NNN=0;
+uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , NNN=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
@@ -78,20 +78,17 @@ MCP_CAN CAN0(42);  // Set CS to pin 42
 
 ////////////関数の宣言//////////////
 void pinSetup(void);
-void init_BME280(void);
 void setupBME280(void);
 void BME280_data(void);
 void SDsetup(void);
-void Serial_print(void);
 void SDWriteData(void);
 void CANsetup(void);
-void Diaphragm_control(void);
-void O2_Conrol();
 void Air_Control();
 void LPG_Control();
-void IG_Get();
-void IG_Get2();
+void IG_Get_LoRa();
 void IG_Pulse();
+void IG_heater();
+void REIG();
 /////////////////////////////////
 
 /****************************************************
@@ -167,10 +164,17 @@ void CANsetup(){
 void CAN_read(){
   if(!digitalRead(CAN0_INT)) {                // If CAN0_INT pin is low, read receive buffer
     CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
-    if(rxId == 0x110){  //生存確認
-      
+    if(rxId == 0x200){  //気圧による点火30秒ver
+      REIG();
+      time_flag=1;
+      Serial2.println("PrIG");
+    }
+    else if(rxId == 0x300){//気圧による点火ずっとver
+      REIG();
+      Serial2.println("IG");
     }
   }
+  
 }
 
 
@@ -261,61 +265,21 @@ void Create_Buffer_Flow(){
 //////////////////////////////////////////////////////////////////
 
 ////////////////////////イグナイタ関係/////////////////////////////
-void IG_Get(){
-  char receve_tmp = 0;
-  while(Serial.available()>0){
-      receve_tmp = Serial.read();
-      RECEVE_Str.concat(receve_tmp);
-  }
-  if(receve_tmp == '\n'){
-      #ifdef DEBUG_SENS
-      Serial.println("available");
-      Serial.println(RECEVE_Str);
-      #endif
-      if(RECEVE_Str.compareTo("REIG\r\n") == 0){
-        IG_repeat = IG_REPEAT;
-        delay_count = IG_TIME_DELAY;
-        #ifndef IG_HEATER
-        IG_count = IG_TIME;
-        Flow_flag = !Flow_flag;
-        #else
-        if(Flow_flag==1) {
-          Flow_flag=0;
-          delay_count = 1;
-        }
-        IG_count = HEATER_TIME;
-        #endif
-        #ifdef DEBUG_SENS
-        Serial.println("get REIG");
-        #endif
-      }
-      RECEVE_Str.remove(0);
-   }
-}
 
 void IG_Get_LoRa(){
   char receve_tmp = 0;
+   while(Serial.available()>0){
+      receve_tmp = Serial.read();
+      RECEVE_Str_LoRa.concat(receve_tmp);
+  }
   while(Serial2.available()>0){
       receve_tmp = Serial2.read();
       RECEVE_Str_LoRa.concat(receve_tmp);
   }
   if(receve_tmp == '\n'){
       if(RECEVE_Str_LoRa.compareTo("REIG\r\n") == 0){
-        IG_repeat = IG_REPEAT;
-        delay_count = IG_TIME_DELAY;
-        #ifndef IG_HEATER
-        IG_count = IG_TIME;
-        Flow_flag = !Flow_flag;
-        #else
-        if(Flow_flag==1) {
-          Flow_flag=0;
-          delay_count = 1;
-        }
-        IG_count = HEATER_TIME;
-        #endif
-        #ifdef DEBUG_SENS
+        REIG();
         Serial2.println("Get REIG");
-        #endif
       }
       else if(RECEVE_Str_LoRa.compareTo("RESET\r\n") == 0){
         Serial2.println("Get RESET");
@@ -342,6 +306,16 @@ void IG_Get_LoRa(){
          if(NNN != 0)Serial2.print(", EL");
          Serial2.println();
       }
+      else if(RECEVE_Str_LoRa.compareTo("SENS\r\n") == 0){
+        BME280_data();
+        Serial2.print(Pressure);
+        Serial2.write(",");
+        Serial2.print(Flow_data[1]);
+        Serial2.write(",");
+        Serial2.print(Flow_data[2]);
+        Serial2.write(",");
+        Serial2.println(Tc_val);
+      }
       else if(RECEVE_Str_LoRa.compareTo("BME\r\n") == 0){
         BME280_data();
         Create_Buffer_BME280();
@@ -358,8 +332,8 @@ void IG_Get_LoRa(){
       }
        else if(RECEVE_Str_LoRa.compareTo("LPGCUT\r\n") == 0){
         LPG_EN = !LPG_EN;
-        if(LPG_EN) Serial2.print("EN");
-        else Serial2.print("DISEN");
+        if(LPG_EN) Serial2.println("EN");
+        else Serial2.println("Cut");
       }
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
          NNN = !NNN;
@@ -370,35 +344,30 @@ void IG_Get_LoRa(){
   }
 }
 
-void IG_Pulse(){
-  if(IG_repeat>0){
-    if(delay_count <1){
-      IG_count--;
-      analogWrite(IGPWM,30);
-    }
-    else delay_count--;
-    if(IG_count<1){
-      IG_repeat--;
-      IG_count = IG_TIME;
-      delay_count = IG_TIME_DELAY;
-      analogWrite(IGPWM,0);
-      }
-  }
-  else analogWrite(IGPWM,0);
+
+void REIG(){
+  IG_flag = 1;
+  Flow_delay = 0;
+  IG_count = HEATER_TIME;
+  if(Flow_flag==1) {
+    Flow_flag=0;
+    Flow_delay = 1;
+    if(PWM_data[1]<3000)  OffSet_a = PWM_data[1];
+    if(PWM_data[2]<2000)  OffSet_g = PWM_data[2];
+  }  
 }
 
 void IG_heater(){
-  if(IG_repeat != 0){
+  if(IG_flag != 0){
     if(IG_count > 0){
       analogWrite(IGPWM,255);
-      if(delay_count != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
+      if(Flow_delay != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
         Flow_flag=1;
       }
       IG_count--;
-      
     }
     else {
-      IG_repeat = 0;
+      IG_flag = 0;
       analogWrite(IGPWM,0);
     }
   }
