@@ -48,7 +48,7 @@ float Pressure_out = 0.0;
 float Flow_data[3]={0};
 uint16_t PWM_data[3]={0} , Tc_val=0;
 int16_t timecount=0, IG_count=0;
-uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , NNN=0;
+uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , LPG_delay=0 , NNN=0;
 float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
@@ -352,6 +352,7 @@ void REIG(){
   if(Flow_flag==1) {
     Flow_flag=0;
     Flow_delay = 1;
+    LPG_delay=0;
     if(PWM_data[1]<3000)  OffSet_a = PWM_data[1];
     if(PWM_data[2]<2000)  OffSet_g = PWM_data[2];
   }  
@@ -361,8 +362,11 @@ void IG_heater(){
   if(IG_flag != 0){
     if(IG_count > 0){
       analogWrite(IGPWM,255);
-      if(Flow_delay != 1 && IG_count == (int16_t)HEATER_TIME/2 ){
+      if(Flow_delay == 0 ){
         Flow_flag=1;
+        if( IG_count == (int16_t)HEATER_TIME/2){
+          LPG_delay=1;
+        }
       }
       IG_count--;
     }

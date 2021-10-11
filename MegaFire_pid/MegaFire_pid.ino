@@ -114,7 +114,7 @@ void TIME_Interrupt(void){
   Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
   if(Flow_flag==1){
     Air_Control();
-    if(LPG_EN==1) LPG_Control();
+    if(LPG_EN==1 && LPG_delay==1) LPG_Control();
     else LPGPWMset=0;
   }
   else {
