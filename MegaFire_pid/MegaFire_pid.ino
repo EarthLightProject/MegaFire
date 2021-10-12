@@ -55,7 +55,8 @@ void setup(){
   Serial2.println("MegaFire");
   //while(Serial2.read() != '\n');
   Serial.println("LoRa is Ready");
-  delay(1000);
+  delay(2000);
+  wdt_reset();
   Wire.begin();          //I2C通信開始
   setupBME280();
   CANsetup();
