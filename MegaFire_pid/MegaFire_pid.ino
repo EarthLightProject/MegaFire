@@ -181,7 +181,7 @@ void LPG_Control(){
   /* 上下限設定 */
   if(sum_g > sum_max) sum_g = sum_max;
   else if(sum_g < sum_min) sum_g = sum_min;
-  if(u > 2000) u = 2000;
+  if(u > 4095) u = 4095;
   else if(u < 0) u = 0;
   /* 入力 */
   LPGPWMset = u;//LPG PWM
