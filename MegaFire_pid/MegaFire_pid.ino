@@ -31,9 +31,6 @@ const int sum_min = -5;
 ////////////////////////////////////
 
 //////////////時間定数//////////////
-#define IG_TIME 2 //イグナイタ点火時間
-#define IG_TIME_DELAY 5 //イグナイタの点火遅れ時間(先に燃料噴射)
-#define IG_REPEAT 10  //イグナイタ動作の繰り返し回数
 #define Ts 50 //(ms)タイマ割り込みの周期, 制御周期
 #define SENDTIME 4  //送信間隔(s)
 #define FLOW_TIME 20
@@ -115,7 +112,10 @@ void TIME_Interrupt(void){
   if(Flow_flag==1){
     Air_Control();
     if(LPG_EN==1 && LPG_delay==1) LPG_Control();
-    else LPGPWMset=0;
+    else{
+      LPGPWMset=0;
+      Serial.println();
+    }
   }
   else {
     AirPWMset=0;
