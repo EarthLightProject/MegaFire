@@ -41,7 +41,7 @@ const int sum_min = -5;
 #include "MegaFire_pid.h"  //ライブラリとピン定義
 
 void setup(){
-  wdt_enable(WDTO_4S);   //8秒周期のウォッチドッグタイマ開始
+  wdt_enable(WDTO_4S);   //4秒周期のウォッチドッグタイマ開始
   pinSetup();            //IOピンの設定
   PWM_setup(2);          //PWMの周期変更31.37kHz
   analogWrite(IGPWM,0);

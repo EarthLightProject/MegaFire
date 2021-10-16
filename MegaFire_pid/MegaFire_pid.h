@@ -60,6 +60,7 @@ String Buffer_BME280_OUT;
 String Buffer_Flow;
 String RECEVE_Str;
 String RECEVE_Str_LoRa;
+int16_t tmp=0;
 
 long unsigned int rxId;
 unsigned char len = 0;
@@ -154,11 +155,13 @@ void SDWriteData(void) {
 
 ///////////////////////////////CAN////////////////////////////////////
 void CANsetup(){
-  if(CAN0.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK)
+  if(CAN0.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ) == CAN_OK){
     Serial.println("MCP2515 Initialized Successfully!");
+    CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
+  }
   else
     Serial.println("Error Initializing MCP2515...");
-  CAN0.setMode(MCP_NORMAL);                     // Set operation mode to normal so the MCP2515 sends acks to received data.
+  
 }
 
 void CAN_read(){
@@ -301,8 +304,6 @@ void IG_Get_LoRa(){
          Serial2.print(Flow_flag);
          Serial2.print(",L=");
          Serial2.print(LPG_EN);
-         Serial2.print(",Tc=");
-         Serial2.print(Tc_val);
          if(NNN != 0)Serial2.print(", EL");
          Serial2.println();
       }
@@ -327,10 +328,14 @@ void IG_Get_LoRa(){
         Serial2.println(Buffer_BME280_OUT);
       }
       else if(RECEVE_Str_LoRa.compareTo("FLOW\r\n") == 0){
-        if(SD_flag != 0) Serial2.println(Buffer_Flow);
-        else Serial2.println("No Data");
+        Serial2.println(Buffer_Flow);
       }
-       else if(RECEVE_Str_LoRa.compareTo("LPGCUT\r\n") == 0){
+      else if(RECEVE_Str_LoRa.compareTo("REFERENCE\r\n") == 0){
+        Serial2.print(r_a);
+        Serial2.write(",");
+        Serial2.println(r_g);
+      }
+      else if(RECEVE_Str_LoRa.compareTo("LPGCUT\r\n") == 0){
         LPG_EN = !LPG_EN;
         if(LPG_EN) Serial2.println("EN");
         else Serial2.println("Cut");
@@ -338,6 +343,22 @@ void IG_Get_LoRa(){
       else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
          NNN = !NNN;
          Serial2.println("Get");
+      }
+      else if(RECEVE_Str_LoRa.indexOf("r_g=") == 0 ){
+        if(sscanf(RECEVE_Str_LoRa.c_str() , "r_g=%d\r\n" ,&tmp)){
+          if(tmp>200 || tmp<0) Serial.println("Err");
+          else r_g=(float)tmp/1000;
+          Serial2.print("r_g=");
+          Serial2.println(r_g);
+         }
+      }
+      else if(RECEVE_Str_LoRa.indexOf("r_a=0.") == 0 ){
+         if(sscanf(RECEVE_Str_LoRa.c_str() , "r_a=0.%d\r\n" ,&tmp)){
+           if(tmp>990 || tmp<0) Serial.println("Err");
+           else r_a=(float)tmp/1000;
+           Serial2.print("r_a=");
+           Serial2.println(r_a);
+         }
       }
       else if(RECEVE_Str_LoRa.compareTo("OK\r\n") != 0) Serial2.println("?");
       RECEVE_Str_LoRa.remove(0);
