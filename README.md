@@ -20,7 +20,7 @@ ELPディレクトリ内の任意のプログラムをArduino IDEで開き，マ
 
 - development
 
-  mainの開発用
+  mainの開発用←基本これを使っている
 
 - flow_sensor_test
 
