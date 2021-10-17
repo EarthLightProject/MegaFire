@@ -1,32 +1,24 @@
-//#define DEBUG_PRESS   //気圧制御のデバッグ用
 #define DEBUG_FLOW  //流量系統のデバッグ
-// #define DEBUG_FLOW_LORA //LoRa越しの流量デバッグ
 #define DEBUG_SENS  //センサ系のデバッグ用
-#define IG_HEATER //ニクロム線による点火
 #define BME_OUT_EN //外側BMEを有効化
 
+//#define Serial2 Serial //LoRaからのコマンドをシリアルモニタから使う
 //////////制御定数定義/////////////
 //各制御の目標値
-float r_a = 0.7;  //L/min
-float r_g = 0.08;  //L/min
+#define REF_AIR 0.7  //L/min
+#define REF_GAS 0.08  //L/min
 
-//空気のPIDゲイン
-const float Kp_a = 0;
-const float Ki_a = 2700;
-const float Kd_a = 0;
+//空気のPIゲイン
+#define KP_AIR 0
+#define KI_AIR 2700
 
-//LPGのPIDゲイン
-const float Kp_g = 0;
-const float Ki_g = 3000;
-const float Kd_g = 0;
+//LPGのPIゲイン
+#define KP_GAS 0
+#define KI_GAS 3000
 
 //PWMのオフセット
-int OffSet_a = 1950;
-int OffSet_g = 1600;
-
-//流量系統の積分偏差の上限下限設定
-const int sum_max =  5;
-const int sum_min = -5;
+#define OFFSET_AIR 1950
+#define OFFSET_GAS 1600
 
 ////////////////////////////////////
 
@@ -61,6 +53,7 @@ void setup(){
   setupBME280();
   CANsetup();
   SDsetup();
+  EEPROM_Load();
   Servo_Diaphragm.attach(Servo_PWM);
   Servo_Diaphragm.write(78);
   MsTimer2::set(Ts, TIME_Interrupt); // TsごとにTIME_Interruptを呼び出す

@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <Servo.h>
 #include <mcp_can.h>
+#include <EEPROM.h>
 
 ////ピン番号の定義////
 #define GNSS_RST 22
@@ -34,9 +35,25 @@
 ///////////////////////////////////
 
 ////SDカードファイル名////
-#define FILE_NAME "DataLog.txt"
+#define FILE_NAME "DataLog"
 
 //////////グローバル変数の宣言//////////
+
+//各制御の目標値
+float r_a = REF_AIR;  //L/min
+float r_g = REF_GAS;  //L/min
+float Kp_a = KP_AIR;//空気のPゲイン
+float Ki_a = KI_AIR;//空気のIゲイン
+const float Kd_a = 0;//空気のDゲイン
+float Kp_g = KP_GAS;//LPGのPゲイン
+float Ki_g = KI_GAS;//LPGのIゲイン
+const float Kd_g = 0;//LPGのDゲイン
+int OffSet_a = OFFSET_AIR;//PWMのオフセット
+int OffSet_g = OFFSET_GAS;
+//流量系統の積分偏差の上限下限設定
+const int sum_max =  5;
+const int sum_min = -5;
+
 float Temp = 0.0;
 float Humidity = 0.0;
 float Pressure = 0.0;
@@ -47,10 +64,8 @@ float Pressure_out = 0.0;
 #endif
 float Flow_data[3]={0};
 uint16_t PWM_data[3]={0} , Tc_val=0;
-int16_t timecount=0, IG_count=0;
+int16_t timecount=0, IG_count=0 ;
 uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , LPG_delay=0 , NNN=0;
-float etmp_d = 0 , sum_d = 0; //1ステップ前の誤差, 誤差の総和
-double etmp_o = 0, sum_o = 0; //1ステップ前の誤差, 誤差の総和
 double etmp_a = 0, sum_a = 0;
 double etmp_g = 0, sum_g = 0;
 String Buffer_BME280;
@@ -58,13 +73,17 @@ String Buffer_BME280;
 String Buffer_BME280_OUT;
 #endif
 String Buffer_Flow;
-String RECEVE_Str;
+String FileName = FILE_NAME;
 String RECEVE_Str_LoRa;
-int16_t tmp=0;
+////////////////////////////////////
 
-long unsigned int rxId;
-unsigned char len = 0;
-unsigned char rxBuf[8];
+////////EEPROMのアドレス設定//////////
+#define EEP_ADRS0 0 //r_a
+#define EEP_ADRS1 EEP_ADRS0 + sizeof(r_a) //r_g
+#define EEP_ADRS2 EEP_ADRS1 + sizeof(r_g) //Ki_a
+#define EEP_ADRS3 EEP_ADRS2 + sizeof(Ki_a) //Ki_g
+#define EEP_ADRS4 EEP_ADRS3 + sizeof(Ki_g) //OffSet_a
+#define EEP_ADRS5 EEP_ADRS4 + sizeof(OffSet_a) //OffSet_g
 ////////////////////////////////////
 
 /////////////クラスの宣言/////////////
@@ -87,6 +106,7 @@ void CANsetup(void);
 void Air_Control();
 void LPG_Control();
 void IG_Get_LoRa();
+void EEPROM_Load();
 void IG_Pulse();
 void IG_heater();
 void REIG();
@@ -126,7 +146,7 @@ void SDsetup(){
     //while (1);  //ウォッチドッグに引っかかって再起動する
   }
   else Serial2.println("SD OK");
-  myFile = SD.open(FILE_NAME, FILE_WRITE);
+  myFile = SD.open(FileName+".csv", FILE_WRITE);
   myFile.write("Time(ms),");
   myFile.write("Temp_IN,Humidity_IN,Pressure_IN,Temp_Out,Humidity_Out,Pressure_Out,");
   myFile.write("Air_y,LPG_y,Air_u,LPG_u");
@@ -165,6 +185,9 @@ void CANsetup(){
 }
 
 void CAN_read(){
+  long unsigned int rxId;
+  unsigned char len = 0;
+  unsigned char rxBuf[8];
   if(!digitalRead(CAN0_INT)) {                // If CAN0_INT pin is low, read receive buffer
     CAN0.readMsgBuf(&rxId, &len, rxBuf);      // Read data: len = data length, buf = data byte(s)
     if(rxId == 0x200){  //気圧による点火30秒ver
@@ -271,43 +294,35 @@ void Create_Buffer_Flow(){
 
 void IG_Get_LoRa(){
   char receve_tmp = 0;
-   while(Serial.available()>0){
-      receve_tmp = Serial.read();
-      RECEVE_Str_LoRa.concat(receve_tmp);
-  }
+  int16_t command_val=0 , eq_count=0 ;
+  float command_val_f=0;
+  String TMP_Str;
+  
   while(Serial2.available()>0){
       receve_tmp = Serial2.read();
-      RECEVE_Str_LoRa.concat(receve_tmp);
+      if(receve_tmp == 0x08 ) RECEVE_Str_LoRa.remove(RECEVE_Str_LoRa.length()-1,1);
+      else RECEVE_Str_LoRa.concat(receve_tmp);
   }
   if(receve_tmp == '\n'){
-      if(RECEVE_Str_LoRa.compareTo("REIG\r\n") == 0){
+      if(RECEVE_Str_LoRa.equals("REIG\r\n") ){
         REIG();
         Serial2.println("Get REIG");
       }
-      else if(RECEVE_Str_LoRa.compareTo("RESET\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("OK\r\n") );
+      else if(RECEVE_Str_LoRa.equals("RESET\r\n") ){
         Serial2.println("Get RESET");
         digitalWrite(RST_mega,HIGH);
         delay(100);
         digitalWrite(RST_mega,LOW);
       }
-      else if(RECEVE_Str_LoRa.compareTo("LOG\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("LOG\r\n") ){
           SD_flag = !SD_flag;
           Serial2.print("Log ");
           if(SD_flag) Serial2.print("start");
           else Serial2.print("stop");
           Serial2.println();
       }
-      else if(RECEVE_Str_LoRa.compareTo("STA\r\n") == 0){
-         Serial2.print("SD=");
-         Serial2.print(SD_flag);
-         Serial2.print(",Fl=");
-         Serial2.print(Flow_flag);
-         Serial2.print(",L=");
-         Serial2.print(LPG_EN);
-         if(NNN != 0)Serial2.print(", EL");
-         Serial2.println();
-      }
-      else if(RECEVE_Str_LoRa.compareTo("SENS\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("SENS\r\n") ){
         BME280_data();
         Serial2.print(Pressure);
         Serial2.write(",");
@@ -317,54 +332,167 @@ void IG_Get_LoRa(){
         Serial2.write(",");
         Serial2.println(Tc_val);
       }
-      else if(RECEVE_Str_LoRa.compareTo("BME\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("BME\r\n") ){
         BME280_data();
         Create_Buffer_BME280();
         Serial2.println(Buffer_BME280);
       }
-      else if(RECEVE_Str_LoRa.compareTo("BMEOUT\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("BMEOUT\r\n") ){
         BME280_data();
         Create_Buffer_BME280_OUT();
         Serial2.println(Buffer_BME280_OUT);
       }
-      else if(RECEVE_Str_LoRa.compareTo("FLOW\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("FLOW\r\n") ){
         Serial2.println(Buffer_Flow);
       }
-      else if(RECEVE_Str_LoRa.compareTo("REFERENCE\r\n") == 0){
-        Serial2.print(r_a);
-        Serial2.write(",");
-        Serial2.println(r_g);
+      else if(RECEVE_Str_LoRa.equals("STA\r\n") ){
+         Serial2.print("SD=");
+         Serial2.print(SD_flag);
+         Serial2.print(",Fl=");
+         Serial2.print(Flow_flag);
+         Serial2.print(",L=");
+         Serial2.print(LPG_EN);
+         if(NNN != 0)Serial2.print(", EL");
+         Serial2.println();
       }
-      else if(RECEVE_Str_LoRa.compareTo("LPGCUT\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("TIME\r\n") ){        
+         Serial2.print((float)millis()/60000);
+         Serial2.println("min");
+      }
+      else if(RECEVE_Str_LoRa.equals("LPGCUT\r\n") ){
         LPG_EN = !LPG_EN;
         if(LPG_EN) Serial2.println("EN");
         else Serial2.println("Cut");
       }
-      else if(RECEVE_Str_LoRa.compareTo("EARTHLIGHT\r\n") == 0){
+      else if(RECEVE_Str_LoRa.equals("EARTHLIGHT\r\n") ){
          NNN = !NNN;
          Serial2.println("Get");
       }
-      else if(RECEVE_Str_LoRa.indexOf("r_g=") == 0 ){
-        if(sscanf(RECEVE_Str_LoRa.c_str() , "r_g=%d\r\n" ,&tmp)){
-          if(tmp>200 || tmp<0) Serial.println("Err");
-          else r_g=(float)tmp/1000;
-          Serial2.print("r_g=");
-          Serial2.println(r_g);
-         }
+      else if (RECEVE_Str_LoRa.startsWith("MKFL:")){
+        if(RECEVE_Str_LoRa.length()>24 || RECEVE_Str_LoRa.length()<8) Serial2.println("Err");
+        else {
+           FileName = RECEVE_Str_LoRa.substring(5);
+           FileName.remove(FileName.length()-2,2);
+           myFile.close();
+           myFile = SD.open(FileName+".csv", FILE_WRITE);
+           myFile.write("Time(ms),");
+           myFile.write("Temp_IN,Humidity_IN,Pressure_IN,Temp_Out,Humidity_Out,Pressure_Out,");
+           myFile.write("Air_y,LPG_y,Air_u,LPG_u");
+           myFile.println(",Thermo");
+           myFile.flush();
+        }        
+         Serial2.println(FileName);
       }
-      else if(RECEVE_Str_LoRa.indexOf("r_a=0.") == 0 ){
-         if(sscanf(RECEVE_Str_LoRa.c_str() , "r_a=0.%d\r\n" ,&tmp)){
-           if(tmp>990 || tmp<0) Serial.println("Err");
-           else r_a=(float)tmp/1000;
-           Serial2.print("r_a=");
-           Serial2.println(r_a);
-         }
+      else if(RECEVE_Str_LoRa.charAt(0) == '$' ){
+         if(RECEVE_Str_LoRa.startsWith("$r_g")){
+            eq_count = RECEVE_Str_LoRa.indexOf('=');
+            if(eq_count != -1){
+              RECEVE_Str_LoRa.remove(0,eq_count+1);
+              command_val_f = RECEVE_Str_LoRa.toFloat();
+              if(command_val_f>0.2 || command_val_f<0.01) Serial2.println("Err");
+              else r_g = command_val_f;
+            }            
+            Serial2.print("r_g=");
+            Serial2.println(r_g);
+          }
+          else if(RECEVE_Str_LoRa.startsWith("$r_a")){
+            eq_count = RECEVE_Str_LoRa.indexOf('=');
+            if(eq_count != -1){
+              RECEVE_Str_LoRa.remove(0,eq_count+1);
+              command_val_f = RECEVE_Str_LoRa.toFloat();
+              if(command_val_f>0.99 || command_val_f<0.01) Serial2.println("Err");
+              else r_a = command_val_f;
+            }            
+            Serial2.print("r_a=");
+            Serial2.println(r_a);
+          }
+           else if(RECEVE_Str_LoRa.startsWith("$Kp_g")){
+             if(sscanf(RECEVE_Str_LoRa.c_str() , "$Kp_g=%d\r\n" ,&command_val)){
+               if(command_val>10000 || command_val<0) Serial2.println("Err");
+               else Kp_g = (float)command_val;
+             }
+             Serial2.print("Kp_g=");
+             Serial2.println(Kp_g);             
+          }
+          else if(RECEVE_Str_LoRa.startsWith("$Kp_a") ){
+             if(sscanf(RECEVE_Str_LoRa.c_str() , "$Kp_a=%d\r\n" ,&command_val)){
+               if(command_val>10000 || command_val<0) Serial2.println("Err");
+               else Kp_a = (float)command_val;
+             }
+             Serial2.print("Kp_a=");
+             Serial2.println(Kp_a);
+          }
+           else if(RECEVE_Str_LoRa.startsWith("$Ki_g")){
+             if(sscanf(RECEVE_Str_LoRa.c_str() , "$Ki_g=%d\r\n" ,&command_val)){
+               if(command_val>10000 || command_val<0) Serial2.println("Err");
+               else Ki_g = (float)command_val;
+             }
+             Serial2.print("Ki_g=");
+             Serial2.println(Ki_g);             
+          }
+          else if(RECEVE_Str_LoRa.startsWith("$Ki_a")){
+             if(sscanf(RECEVE_Str_LoRa.c_str() , "$Ki_a=%d\r\n" ,&command_val)){
+               if(command_val>10000 || command_val<0) Serial2.println("Err");
+               else Ki_a = (float)command_val;
+             }
+             Serial2.print("Ki_a=");
+             Serial2.println(Ki_a);
+          }
+          else if(RECEVE_Str_LoRa.startsWith("$OffSet_g")){
+            if(sscanf(RECEVE_Str_LoRa.c_str() , "$OffSet_g=%d\r\n" ,&command_val)){
+              if(command_val>4095 || command_val<0) Serial2.println("Err");
+              else OffSet_g = command_val;
+            }
+            Serial2.print("OffSet_g=");
+            Serial2.println(OffSet_g);
+          }
+          else if(RECEVE_Str_LoRa.startsWith("$OffSet_a")){
+            if(sscanf(RECEVE_Str_LoRa.c_str() , "$OffSet_a=%d\r\n" ,&command_val)){
+              if(command_val>4095 || command_val<0) Serial2.println("Err");
+              else OffSet_a = command_val;
+            }
+            Serial2.print("OffSet_a=");
+            Serial2.println(OffSet_a);
+          }
+          else if(RECEVE_Str_LoRa.equals("$LOAD\r\n")  ){
+            EEPROM_Load();
+            Serial2.println("LOAD");
+          }
+          else if(RECEVE_Str_LoRa.equals("$SAVE\r\n")  ){
+            EEPROM.put(EEP_ADRS0,r_a);
+            EEPROM.put(EEP_ADRS1,r_g);
+            EEPROM.put(EEP_ADRS2,Ki_a);
+            EEPROM.put(EEP_ADRS3,Ki_g);
+            EEPROM.put(EEP_ADRS4,OffSet_a);
+            EEPROM.put(EEP_ADRS5,OffSet_g);
+            Serial2.println("SAVE");
+          }
+          else if(RECEVE_Str_LoRa.equals("$DEFAULT\r\n")  ){
+            r_a = REF_AIR;  //L/min
+            r_g = REF_GAS; //L/min
+            Kp_a = KP_AIR;
+            Ki_a = KI_AIR;
+            Kp_g = KP_GAS; 
+            Ki_g = KI_GAS;
+            OffSet_a = OFFSET_AIR;
+            OffSet_g = OFFSET_GAS;
+            Serial2.println("Set DEFAULT");
+          }
+          else Serial2.println("?");
       }
-      else if(RECEVE_Str_LoRa.compareTo("OK\r\n") != 0) Serial2.println("?");
+      else Serial2.println("?");
       RECEVE_Str_LoRa.remove(0);
   }
 }
 
+void EEPROM_Load(){
+    EEPROM.get(EEP_ADRS0,r_a);
+    EEPROM.get(EEP_ADRS1,r_g);
+    EEPROM.get(EEP_ADRS2,Ki_a);
+    EEPROM.get(EEP_ADRS3,Ki_g);
+    EEPROM.get(EEP_ADRS4,OffSet_a);
+    EEPROM.get(EEP_ADRS5,OffSet_g);
+}
 
 void REIG(){
   IG_flag = 1;
