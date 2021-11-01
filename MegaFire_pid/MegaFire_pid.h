@@ -380,8 +380,8 @@ void IG_Get_LoRa(){
            myFile.write("Air_y,LPG_y,Air_u,LPG_u");
            myFile.println(",Thermo");
            myFile.flush();
-        }        
-         Serial2.println(FileName);
+           Serial2.println(FileName);
+        }                 
       }
       else if(RECEVE_Str_LoRa.charAt(0) == '$' ){
          if(RECEVE_Str_LoRa.startsWith("$r_g")){

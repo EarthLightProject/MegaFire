@@ -2,7 +2,7 @@
 #define DEBUG_SENS  //センサ系のデバッグ用
 #define BME_OUT_EN //外側BMEを有効化
 
-//#define Serial2 Serial //LoRaからのコマンドをシリアルモニタから使う
+#define Serial2 Serial //LoRaからのコマンドをシリアルモニタから使う
 //////////制御定数定義/////////////
 //各制御の目標値
 #define REF_AIR 0.7  //L/min
