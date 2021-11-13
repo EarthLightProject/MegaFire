@@ -7,7 +7,7 @@
 コマンドプロンプト(Windows)またはターミナル(Mac)を開き，お好みのディレクトリに移動したのち，次のコードを実行する．
 
 ```
-$ git clone https://github.com/nashinokagaku/ELP
+$ git clone https://github.com/EarthLightProject/MegaFire.git
 ```
 
 すると，現在のディレクトリに新しく"ELP"というディレクトリが追加される．
