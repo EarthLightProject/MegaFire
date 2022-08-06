@@ -28,6 +28,9 @@
 #define FLOW_TIME 20
 #define HEATER_TIME 100  //ニクロムの導通時間　半分の時間から燃料を流す
 #define Press_IG_TIME 30 //気圧による予備点火の時間(s)
+#define LOW_PASS_COEFF 0.99   //熱電対のローパスフィルタ係数(0<x<1)
+#define TC_BUFF_NUM 20        //熱電対の値の微分の移動平均サンプル数
+#define LIGHT_THRESHOLD 300    //点火判定の閾値
 ////////////////////////////////////
 
 #include "MegaFire_pid.h"  //ライブラリとピン定義
@@ -61,7 +64,7 @@ void setup(){
 }
 
 void loop(){
-  if(digitalRead(SW1)==1){
+  if(digitalRead(SW1)==1){    //SDカードのログ保存ボタン検知
     while(digitalRead(SW1)==1);
     SD_flag = !SD_flag;
     Serial.print("Log ");
@@ -77,7 +80,7 @@ void loop(){
     Serial.println();
     Serial2.println();
   }
-  if(SD_flag==1){
+  if(SD_flag == 1){     //SDカードへログを保存
     BME280_data();
     Create_Buffer_BME280();
     #ifdef BME_OUT_EN
@@ -89,20 +92,30 @@ void loop(){
     myFile.println();
     myFile.flush(); 
   }
-  CAN_read();
-  IG_Get_LoRa();
+  CAN_read();       //CANからのメッセージを確認
+  IG_Get_LoRa();    //LoRaからのメッセージを確認
 }
 
 ///////////////////////サブ関数////////////////////////////
 void TIME_Interrupt(void){
   wdt_reset();
+  
   if(time_flag == 1)   timecount++;
   if(timecount>(int16_t)(Press_IG_TIME*1000/Ts)){
     time_flag=0;
     timecount=0;
     REIG();
   }
+  
   Tc_val = analogRead(Thermocouple_PIN);//熱電対の温度測定
+  Tc_val_LowPass = (int16_t)(Tc_val_LowPass*LOW_PASS_COEFF + Tc_val*(1-LOW_PASS_COEFF));  //熱電対にローパスフィルタをかける
+  Tc_diff_sum += Tc_val_LowPass - Tc_diff[Tc_buff_num]; //合計値に最新の値を足して一番古い値を引く
+  Tc_diff[Tc_buff_num] = Tc_val_LowPass;                //バッファー内部も更新
+  if((int)(Tc_diff_sum / TC_BUFF_NUM) > LIGHT_THRESHOLD) Light_flag = 1;    //点火判定 1で点火状態
+  else if(-(int)(Tc_diff_sum / TC_BUFF_NUM) > LIGHT_THRESHOLD) Light_flag = 0;
+  if(Tc_buff_num > (TC_BUFF_NUM - 2) )  Tc_buff_num = 0;
+  else Tc_buff_num ++ ;
+  
   if(Flow_flag==1){
     Air_Control();
     if(LPG_EN==1 && LPG_delay==1) LPG_Control();
@@ -122,7 +135,7 @@ void TIME_Interrupt(void){
     PWM_data[2]=0;
   }
   Create_Buffer_Flow(); //流量を保存
-  IG_heater();
+  IG_heater();  //
 
 }
 

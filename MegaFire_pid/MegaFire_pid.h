@@ -63,9 +63,10 @@ float Humidity_out = 0.0;
 float Pressure_out = 0.0;
 #endif
 float Flow_data[3]={0};
-uint16_t PWM_data[3]={0} , Tc_val=0;
+uint16_t PWM_data[3]={0};
 int16_t timecount=0, IG_count=0 ;
-uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , LPG_delay=0 , NNN=0;
+int16_t Tc_val_LowPass=0 , Tc_val=0 , Tc_diff[TC_BUFF_NUM]={0} , Tc_diff_sum=0;
+uint8_t IG_flag=0 , Flow_flag=0 , time_flag=0 , IG_point[4]={0} , Pulse_Count = 0 , Flow_delay=0 , SD_flag=0 ,LPG_EN=1 , LPG_delay=0 , NNN=0 , Tc_buff_num=0 ,Light_flag=0 ;
 double etmp_a = 0, sum_a = 0;
 double etmp_g = 0, sum_g = 0;
 String Buffer_BME280;
@@ -290,7 +291,7 @@ void Create_Buffer_Flow(){
 }
 //////////////////////////////////////////////////////////////////
 
-////////////////////////イグナイタ関係/////////////////////////////
+////////////////////////LoRa通信/////////////////////////////
 
 void IG_Get_LoRa(){
   char receve_tmp = 0;
@@ -323,23 +324,27 @@ void IG_Get_LoRa(){
           Serial2.println();
       }
       else if(RECEVE_Str_LoRa.equals("SENS\r\n") ){
-        BME280_data();
+        if(SD_flag == 0) BME280_data();
         Serial2.print(Pressure);
         Serial2.write(",");
         Serial2.print(Flow_data[1]);
         Serial2.write(",");
         Serial2.print(Flow_data[2]);
         Serial2.write(",");
-        Serial2.println(Tc_val);
+        Serial2.println(Tc_val_LowPass);
       }
       else if(RECEVE_Str_LoRa.equals("BME\r\n") ){
-        BME280_data();
-        Create_Buffer_BME280();
+        if(SD_flag == 0){
+          BME280_data();
+          Create_Buffer_BME280();
+        }
         Serial2.println(Buffer_BME280);
       }
       else if(RECEVE_Str_LoRa.equals("BMEOUT\r\n") ){
-        BME280_data();
-        Create_Buffer_BME280_OUT();
+        if(SD_flag == 0){
+          BME280_data();
+          Create_Buffer_BME280_OUT();
+        }
         Serial2.println(Buffer_BME280_OUT);
       }
       else if(RECEVE_Str_LoRa.equals("FLOW\r\n") ){
@@ -350,8 +355,10 @@ void IG_Get_LoRa(){
          Serial2.print(SD_flag);
          Serial2.print(",Fl=");
          Serial2.print(Flow_flag);
-         Serial2.print(",L=");
-         Serial2.print(LPG_EN);
+         /*Serial2.print(",L=");
+         Serial2.print(LPG_EN);*/
+         Serial2.print(",LF=");
+         Serial2.print(Light_flag);
          if(NNN != 0)Serial2.print(", EL");
          Serial2.println();
       }
@@ -485,7 +492,7 @@ void IG_Get_LoRa(){
   }
 }
 
-void EEPROM_Load(){
+void EEPROM_Load(){   //EEPROMから設定読み出し
     EEPROM.get(EEP_ADRS0,r_a);
     EEPROM.get(EEP_ADRS1,r_g);
     EEPROM.get(EEP_ADRS2,Ki_a);
@@ -494,33 +501,33 @@ void EEPROM_Load(){
     EEPROM.get(EEP_ADRS5,OffSet_g);
 }
 
-void REIG(){
+void REIG(){    //点火消火
   IG_flag = 1;
   Flow_delay = 0;
   IG_count = HEATER_TIME;
-  if(Flow_flag==1) {
+  if(Flow_flag==1) {  //消火動作の場合
     Flow_flag=0;
     Flow_delay = 1;
     LPG_delay=0;
-    if(PWM_data[1]<3000)  OffSet_a = PWM_data[1];
-    if(PWM_data[2]<2000)  OffSet_g = PWM_data[2];
+    if(PWM_data[1]<3000)  OffSet_a = PWM_data[1];   //空気のオフセットを保存
+    if(PWM_data[2]<2000)  OffSet_g = PWM_data[2];   //LPGのオフセットを保存
   }  
 }
 
 void IG_heater(){
-  if(IG_flag != 0){
-    if(IG_count > 0){
-      analogWrite(IGPWM,255);
-      if(Flow_delay == 0 ){
+  if(IG_flag != 0){     //点火シーケンス中か
+    if(IG_count > 0){   //ニクロム線の通電時間中か
+      analogWrite(IGPWM,255);     //ニクロム線に通電
+      if(Flow_delay == 0 ){   //点火シーケンス中にLPGを遅れて流すための条件判定
         Flow_flag=1;
-        if( IG_count == (int16_t)HEATER_TIME/2){
+        if( IG_count == (int16_t)HEATER_TIME/2){    //ニクロム線通電時間の半分からLPG噴射開始
           LPG_delay=1;
         }
       }
       IG_count--;
     }
     else {
-      IG_flag = 0;
+      IG_flag = 0;  //点火シーケンス終了
       analogWrite(IGPWM,0);
     }
   }
