@@ -15,7 +15,7 @@
 #define IGsig 40
 #define CS 53
 #define IGPWM 11
-#define O2_flow A0
+#define SWITCH A0
 #define Air_flow A1
 #define LPG_flow A2
 #define LPG_PWM 3
@@ -123,7 +123,7 @@ void pinSetup(){    //IOピンの設定
   pinMode(LPG_PWM,OUTPUT);
   pinMode(Air_PWM,OUTPUT);
   pinMode(IGPWM,OUTPUT);
-  pinMode(O2_flow,INPUT);
+  pinMode(SWITCH,INPUT);
   pinMode(Air_flow,INPUT);
   pinMode(LPG_flow,INPUT);
   pinMode(Thermocouple_PIN,INPUT);
