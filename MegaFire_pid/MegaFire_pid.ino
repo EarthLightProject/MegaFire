@@ -94,7 +94,8 @@ void loop(){
   }
   CAN_read();       //CANからのメッセージを確認
   IG_Get_LoRa();    //LoRaからのメッセージを確認
-  if(SWITCH==0){
+  if(digitalRead(SWITCH)==0){
+    while(digitalRead(SWITCH)==0);
     REIG();
   }
 }
